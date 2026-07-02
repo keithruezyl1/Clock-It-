@@ -18,6 +18,7 @@ import {
 import { Page } from '../components/Page'
 import { Modal } from '../components/Modal'
 import { ConfirmModal } from '../components/ConfirmModal'
+import { PermissionsSection } from '../components/PermissionsSection'
 import { Spinner } from '../components/Spinner'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
@@ -174,6 +175,10 @@ export default function Profile() {
           <Crosshair size={16} /> Update workplace
         </button>
       </div>
+
+      {/* permissions */}
+      <SectionTitle>Permissions</SectionTitle>
+      <PermissionsSection />
 
       {/* install */}
       <SectionTitle>App</SectionTitle>
