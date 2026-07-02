@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import type { AttendanceLog } from '../lib/types'
 import { fmtTime, fmtDateLong, fmtDuration } from '../lib/format'
+import { reverseGeocode } from '../lib/geo'
 import { LogIn, LogOut, Clock, StickyNote, MapPin, Trash2 } from 'lucide-react'
 
 interface Props {
@@ -10,6 +12,34 @@ interface Props {
 }
 
 export function LogDetailModal({ log, onClose, onDelete }: Props) {
+  const hasCoords = !!log && log.clock_in_lat != null && log.clock_in_lng != null
+
+  // Resolve where the clock-in happened from its saved coordinates.
+  const [place, setPlace] = useState<string | null>(null)
+  const [placeLoading, setPlaceLoading] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    if (log && log.clock_in_lat != null && log.clock_in_lng != null) {
+      const lat = log.clock_in_lat
+      const lng = log.clock_in_lng
+      setPlace(null)
+      setPlaceLoading(true)
+      reverseGeocode({ latitude: lat, longitude: lng })
+        .then((g) => {
+          if (cancelled) return
+          setPlace(g.place_name || g.city || g.region || `${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+        })
+        .finally(() => {
+          if (!cancelled) setPlaceLoading(false)
+        })
+    } else {
+      setPlace(null)
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [log?.id])
+
   return (
     <Modal open={!!log} onClose={onClose} title={log ? fmtDateLong(log.work_date) : ''}>
       {log && (
@@ -33,15 +63,17 @@ export function LogDetailModal({ log, onClose, onDelete }: Props) {
             </div>
           </div>
 
-          {(log.title || log.clock_in_distance_m != null) && (
+          {(log.title || hasCoords) && (
             <div className="flex items-center justify-between gap-3">
-              <p className="min-w-0 flex-1 truncate text-sm font-extrabold text-lavender-700">
+              <p className="min-w-0 shrink-0 text-sm font-extrabold text-lavender-700">
                 {log.title || 'Daily log'}
               </p>
-              {log.clock_in_distance_m != null && (
-                <div className="flex shrink-0 items-center gap-1.5 text-[13px] text-lavender-700/60">
-                  <MapPin size={15} className="text-mint-500" />
-                  Verified {Math.round(log.clock_in_distance_m)} m from workplace
+              {hasCoords && (
+                <div className="flex min-w-0 items-center justify-end gap-1.5 text-[13px] text-lavender-700/60">
+                  <MapPin size={15} className="shrink-0 text-mint-500" />
+                  <span className="truncate">
+                    {placeLoading ? 'Locating…' : place ?? 'Location unavailable'}
+                  </span>
                 </div>
               )}
             </div>
