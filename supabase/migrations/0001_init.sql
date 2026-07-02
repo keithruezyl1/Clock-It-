@@ -136,6 +136,10 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- The trigger runs as the function owner regardless of grants; no API role
+-- should be able to invoke it directly via the REST RPC endpoint.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Storage bucket for clock-in / clock-out photos.
 -- Public read (photos are served via getPublicUrl); writes scoped to the
