@@ -22,6 +22,7 @@ import { supabase } from '../lib/supabase'
 import { getCurrentPosition, reverseGeocode, type Coords, type ReverseGeocode } from '../lib/geo'
 
 const RADIUS_OPTIONS = [1000, 3000, 5000]
+const HOURS_PRESETS = [200, 300, 400, 500, 600]
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -31,6 +32,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [dir, setDir] = useState(1)
   const [name, setName] = useState(profile?.full_name ?? '')
+  const [targetHours, setTargetHours] = useState<number | ''>(profile?.ojt_target_hours ?? 500)
 
   const [coords, setCoords] = useState<Coords | null>(null)
   const [geo, setGeo] = useState<ReverseGeocode | null>(null)
@@ -82,7 +84,11 @@ export default function Onboarding() {
 
       const { error: profErr } = await supabase
         .from('profiles')
-        .update({ full_name: name.trim(), onboarded: true })
+        .update({
+          full_name: name.trim(),
+          ojt_target_hours: typeof targetHours === 'number' ? targetHours : null,
+          onboarded: true,
+        })
         .eq('id', user.id)
       if (profErr) throw profErr
 
@@ -97,6 +103,7 @@ export default function Onboarding() {
 
   const steps = [
     <NameStep key="name" name={name} setName={setName} onNext={() => go(1)} />,
+    <OjtHoursStep key="ojt" hours={targetHours} setHours={setTargetHours} />,
     <LocationStep
       key="loc"
       coords={coords}
@@ -110,7 +117,14 @@ export default function Onboarding() {
     <InstructionsStep key="instr" />,
   ]
 
-  const canAdvance = step === 0 ? name.trim().length >= 2 : step === 1 ? !!coords : true
+  const canAdvance =
+    step === 0
+      ? name.trim().length >= 2
+      : step === 1
+        ? typeof targetHours === 'number' && targetHours > 0
+        : step === 2
+          ? !!coords
+          : true
 
   return (
     <Page className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-8 safe-top">
@@ -230,6 +244,69 @@ function NameStep({
           onKeyDown={(e) => e.key === 'Enter' && name.trim().length >= 2 && onNext()}
           autoFocus
         />
+      </div>
+    </div>
+  )
+}
+
+function OjtHoursStep({
+  hours,
+  setHours,
+}: {
+  hours: number | ''
+  setHours: (v: number | '') => void
+}) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-6 grid h-14 w-14 place-items-center rounded-3xl bg-gradient-to-br from-peach-400 to-peach-500 text-white shadow-soft">
+        <Timer size={26} />
+      </div>
+      <h2 className="text-2xl font-black text-lavender-700">How long is your OJT?</h2>
+      <p className="mt-2 text-[15px] text-lavender-700/70">
+        Set the total number of hours you need to complete. We’ll track your progress and cheer you
+        on when you finish.
+      </p>
+
+      <div className="mt-6">
+        <label className="label">Required hours</label>
+        <div className="flex flex-wrap gap-2">
+          {HOURS_PRESETS.map((h) => (
+            <button
+              key={h}
+              type="button"
+              onClick={() => setHours(h)}
+              className={`flex-1 rounded-2xl border-2 py-3 text-sm font-bold transition ${
+                hours === h
+                  ? 'border-peach-400 bg-peach-100 text-peach-500'
+                  : 'border-lavender-100 bg-white/60 text-lavender-400'
+              }`}
+            >
+              {h}h
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <label className="label">Or enter a custom amount</label>
+        <div className="relative">
+          <input
+            className="input pr-16"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={5000}
+            placeholder="e.g. 486"
+            value={hours}
+            onChange={(e) => {
+              const v = e.target.value
+              setHours(v === '' ? '' : Math.max(0, Math.min(5000, Math.round(Number(v)))))
+            }}
+          />
+          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-lavender-400">
+            hours
+          </span>
+        </div>
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ export interface Profile {
   avatar_url: string | null
   phone: string | null
   onboarded: boolean
+  ojt_target_hours: number | null
   created_at: string
   updated_at: string
 }

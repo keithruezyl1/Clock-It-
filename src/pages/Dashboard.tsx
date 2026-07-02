@@ -9,12 +9,14 @@ import {
   ChevronRight,
   Coffee,
   Trash2,
+  Timer,
 } from 'lucide-react'
 import { Page } from '../components/Page'
 import { Wordmark } from '../components/Logo'
 import { Spinner } from '../components/Spinner'
 import { LogDetailModal } from '../components/LogDetailModal'
 import { ConfirmModal } from '../components/ConfirmModal'
+import { CelebrationModal } from '../components/CelebrationModal'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -24,6 +26,38 @@ import { fmtTime, fmtDateLong, fmtDuration } from '../lib/format'
 function todayStr() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// A mix of motivating, warm, and playful greetings shown on the idle card.
+const WELCOME_MESSAGES = [
+  'Today’s a fresh chance to do great work.',
+  'Small steps today, big wins later.',
+  'You’ve got everything it takes for today.',
+  'Show up, clock in, make it count.',
+  'Progress starts the moment you clock in.',
+  'One clock-in closer to your goals.',
+  'Make today a day worth logging.',
+  'Glad to have you here today.',
+  'Take a breath — you’ve got this.',
+  'Here’s to a good, steady day.',
+  'Hope today treats you kindly.',
+  'Ease in — one clock-in at a time.',
+  'Your future self will thank you for today.',
+  'Another day, another chance to shine.',
+  'Time to make the clock earn its keep.',
+  'Coffee first, then conquer the day. ☕',
+  'The clock’s been waiting for you. 👀',
+  'Let’s turn “good morning” into “good work”.',
+  'Warning: greatness may occur today.',
+  'Tap the button, become a legend, repeat tomorrow.',
+]
+
+// Pick one greeting per calendar day — stable all day, varies day to day.
+function dailyWelcome(date = new Date()) {
+  const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+  let hash = 0
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0
+  return WELCOME_MESSAGES[Math.abs(hash) % WELCOME_MESSAGES.length]
 }
 
 export default function Dashboard() {
@@ -63,7 +97,30 @@ export default function Dashboard() {
     [logs],
   )
 
-  const firstName = (profile?.full_name || 'there').split(' ')[0]
+  // Total logged minutes across all completed (clocked-out) sessions.
+  const totalMinutes = useMemo(() => {
+    let m = 0
+    for (const l of logs) {
+      if (l.clock_in_at && l.clock_out_at) {
+        m += (new Date(l.clock_out_at).getTime() - new Date(l.clock_in_at).getTime()) / 60000
+      }
+    }
+    return Math.round(m)
+  }, [logs])
+
+  const targetHours = profile?.ojt_target_hours ?? null
+
+  // Fire the completion celebration once, when the target is first reached.
+  const [celebrate, setCelebrate] = useState(false)
+  useEffect(() => {
+    if (loading || !user || !targetHours) return
+    if (totalMinutes < targetHours * 60) return
+    const key = `ojt-celebrated:${user.id}:${targetHours}`
+    if (typeof localStorage !== 'undefined' && !localStorage.getItem(key)) {
+      localStorage.setItem(key, '1')
+      setCelebrate(true)
+    }
+  }, [loading, user, targetHours, totalMinutes])
 
   const confirmDelete = async () => {
     if (!toDelete) return
@@ -84,7 +141,6 @@ export default function Dashboard() {
     <Page className="px-5 safe-top">
       <header className="flex items-center justify-between py-6">
         <div>
-          <p className="text-[15px] font-semibold text-lavender-700/60">Hi {firstName} 👋</p>
           <h1 className="text-2xl font-black text-lavender-700">
             <Wordmark className="text-2xl" />
           </h1>
@@ -107,6 +163,9 @@ export default function Dashboard() {
       ) : (
         <IdleCard onClockIn={() => navigate('/clock-in')} />
       )}
+
+      {/* Total hours */}
+      {!loading && <TotalHoursCard minutes={totalMinutes} targetHours={targetHours} />}
 
       {/* History */}
       <div className="mb-3 mt-8 flex items-center justify-between">
@@ -184,7 +243,67 @@ export default function Dashboard() {
         onConfirm={confirmDelete}
         onCancel={() => setToDelete(null)}
       />
+      <CelebrationModal
+        open={celebrate}
+        hours={targetHours ?? 0}
+        onClose={() => setCelebrate(false)}
+      />
     </Page>
+  )
+}
+
+function TotalHoursCard({
+  minutes,
+  targetHours,
+}: {
+  minutes: number
+  targetHours: number | null
+}) {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  const targetMin = targetHours ? targetHours * 60 : null
+  const done = targetMin != null && minutes >= targetMin
+  const remainingH = targetMin != null ? Math.ceil(Math.max(0, targetMin - minutes) / 60) : null
+  const pct = targetMin ? Math.min(100, Math.round((minutes / targetMin) * 100)) : null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-4 rounded-4xl bg-gradient-to-br from-mint-400 to-mint-500 p-5 text-white shadow-soft"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-wide text-white/80">
+            Total hours logged
+          </p>
+          <p className="mt-1 text-3xl font-black tabular-nums">
+            {h}h {m}m
+          </p>
+        </div>
+        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/20">
+          <Timer size={24} />
+        </div>
+      </div>
+
+      {targetMin != null && (
+        <div className="mt-4">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-white/25">
+            <motion.div
+              className="h-full rounded-full bg-white"
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+            />
+          </div>
+          <p className="mt-2 text-sm font-semibold text-white/95">
+            {done
+              ? '🎉 OJT complete — you did it!'
+              : `${remainingH} hour${remainingH === 1 ? '' : 's'} to go!`}
+          </p>
+        </div>
+      )}
+    </motion.div>
   )
 }
 
@@ -227,9 +346,8 @@ function IdleCard({ onClockIn }: { onClockIn: () => void }) {
     >
       <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
       <div className="absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10" />
-      <p className="text-sm font-bold uppercase tracking-wide text-white/80">Ready when you are</p>
-      <p className="mt-1 text-2xl font-black">Start your work day</p>
-      <p className="mt-1 text-sm text-white/85">We’ll verify you’re at your workplace first.</p>
+      <p className="text-2xl font-black">Start your work day</p>
+      <p className="mt-1 text-sm text-white/85">{dailyWelcome()}</p>
       <button
         onClick={onClockIn}
         className="btn mt-5 w-full bg-white text-lavender-700 shadow-card hover:brightness-105"

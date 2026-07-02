@@ -87,6 +87,17 @@ export default function Profile() {
   const totalHours = Math.floor(stats.minutes / 60)
   const totalMins = stats.minutes % 60
 
+  const targetHours = profile?.ojt_target_hours ?? null
+  const ojtDone = targetHours != null && stats.minutes >= targetHours * 60
+  const remainingHours =
+    targetHours != null ? Math.ceil(Math.max(0, targetHours * 60 - stats.minutes) / 60) : null
+  const hoursSub =
+    targetHours == null
+      ? undefined
+      : ojtDone
+        ? '🎉 OJT complete!'
+        : `${remainingHours} hour${remainingHours === 1 ? '' : 's'} to go!`
+
   const handleInstall = async () => {
     if (install.isIOS && !install.canInstall) {
       setIosOpen(true)
@@ -147,6 +158,7 @@ export default function Profile() {
           value={`${totalHours}h ${totalMins}m`}
           label="Hours logged"
           color="from-lavender-400 to-lavender-600"
+          sub={hoursSub}
         />
       </div>
 
@@ -289,11 +301,13 @@ function StatTile({
   value,
   label,
   color,
+  sub,
 }: {
   icon: React.ReactNode
   value: string
   label: string
   color: string
+  sub?: string
 }) {
   return (
     <div className="card p-4">
@@ -302,6 +316,7 @@ function StatTile({
       </div>
       <p className="mt-3 text-2xl font-black text-lavender-700">{value}</p>
       <p className="text-[13px] font-semibold text-lavender-700/60">{label}</p>
+      {sub && <p className="mt-0.5 text-[11px] font-bold text-lavender-400">{sub}</p>}
     </div>
   )
 }

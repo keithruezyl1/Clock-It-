@@ -12,6 +12,7 @@ create table if not exists public.profiles (
   avatar_url  text,
   phone       text,
   onboarded   boolean not null default false,
+  ojt_target_hours integer,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
