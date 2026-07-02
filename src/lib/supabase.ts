@@ -1,12 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL as string
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-
-if (!url || !anonKey) {
-  // Surfaced clearly in dev; prevents cryptic runtime errors.
-  console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY env vars.')
-}
+// The publishable key is safe to ship in the client bundle; env vars override it.
+const url =
+  (import.meta.env.VITE_SUPABASE_URL as string) || 'https://fgvxnpmvxhakygkmffxv.supabase.co'
+const anonKey =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ||
+  'sb_publishable_3pgCWylXHTz_5ecQkTW96w_NutqCot5'
 
 export const supabase = createClient(url, anonKey, {
   auth: {
