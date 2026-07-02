@@ -21,12 +21,7 @@ import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { AttendanceLog } from '../lib/types'
-import { fmtTime, fmtDateLong, fmtDuration } from '../lib/format'
-
-function todayStr() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+import { fmtTime, fmtDateLong, fmtDuration, todayDateStr } from '../lib/format'
 
 // A mix of motivating, warm, and playful greetings shown on the idle card.
 const WELCOME_MESSAGES = [
@@ -70,6 +65,17 @@ export default function Dashboard() {
   const [toDelete, setToDelete] = useState<AttendanceLog | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Track the local calendar day so the UI rolls over at midnight even if the
+  // app is left open — yesterday's session then counts as yesterday, not today.
+  const [today, setToday] = useState(todayDateStr())
+  useEffect(() => {
+    const t = setInterval(() => {
+      const d = todayDateStr()
+      setToday((prev) => (prev === d ? prev : d))
+    }, 30000)
+    return () => clearInterval(t)
+  }, [])
+
   const load = async () => {
     if (!user) return
     const { data, error } = await supabase
@@ -88,13 +94,17 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
+  // Only today's session drives the "clocked in" hero. An open session from a
+  // previous day stays in history dated to its own day; it no longer counts as
+  // an active session today.
   const activeLog = useMemo(
-    () => logs.find((l) => l.status === 'active' && !l.clock_out_at) ?? null,
-    [logs],
+    () =>
+      logs.find((l) => l.work_date === today && l.status === 'active' && !l.clock_out_at) ?? null,
+    [logs, today],
   )
   const todayCompleted = useMemo(
-    () => logs.find((l) => l.work_date === todayStr() && l.status === 'completed') ?? null,
-    [logs],
+    () => logs.find((l) => l.work_date === today && l.status === 'completed') ?? null,
+    [logs, today],
   )
 
   // Total logged minutes across all completed (clocked-out) sessions.
@@ -159,7 +169,7 @@ export default function Dashboard() {
       ) : activeLog ? (
         <ActiveCard log={activeLog} onClockOut={() => navigate('/clock-out')} />
       ) : todayCompleted ? (
-        <DoneCard log={todayCompleted} onClockIn={() => navigate('/clock-in')} />
+        <DoneCard log={todayCompleted} />
       ) : (
         <IdleCard onClockIn={() => navigate('/clock-in')} />
       )}
@@ -359,7 +369,7 @@ function IdleCard({ onClockIn }: { onClockIn: () => void }) {
   )
 }
 
-function DoneCard({ log, onClockIn }: { log: AttendanceLog; onClockIn: () => void }) {
+function DoneCard({ log }: { log: AttendanceLog }) {
   return (
     <motion.div
       initial={{ scale: 0.97, opacity: 0 }}
@@ -378,9 +388,9 @@ function DoneCard({ log, onClockIn }: { log: AttendanceLog; onClockIn: () => voi
           <LogOut size={15} className="text-peach-400" /> {fmtTime(log.clock_out_at)}
         </span>
       </div>
-      <button onClick={onClockIn} className="btn-soft mt-5 w-full">
-        <LogIn size={18} /> Clock in again
-      </button>
+      <p className="mt-5 rounded-2xl bg-lavender-50 p-3 text-center text-[13px] font-semibold text-lavender-600">
+        That’s your log for today — see you tomorrow! 🌙
+      </p>
     </motion.div>
   )
 }

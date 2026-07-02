@@ -1,5 +1,12 @@
 import { format, isToday, isYesterday, parseISO, differenceInSeconds } from 'date-fns'
 
+/** Today's date as YYYY-MM-DD in the user's *local* timezone (not UTC). */
+export function todayDateStr(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`
+}
+
 export function fmtTime(iso: string | null): string {
   if (!iso) return '--:--'
   return format(parseISO(iso), 'h:mm a')

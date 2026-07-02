@@ -85,6 +85,10 @@ create table if not exists public.attendance_logs (
 create index if not exists attendance_logs_user_status_idx
   on public.attendance_logs (user_id, status, clock_in_at desc);
 
+-- Exactly one attendance log per user per calendar day.
+create unique index if not exists attendance_logs_user_work_date_uniq
+  on public.attendance_logs (user_id, work_date);
+
 alter table public.attendance_logs enable row level security;
 
 drop policy if exists "attendance_logs_all_own" on public.attendance_logs;

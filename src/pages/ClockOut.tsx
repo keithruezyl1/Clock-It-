@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { uploadPhoto } from '../lib/storage'
 import type { AttendanceLog } from '../lib/types'
-import { fmtTime, fmtDuration } from '../lib/format'
+import { fmtTime, fmtDuration, todayDateStr } from '../lib/format'
 
 export default function ClockOut() {
   const navigate = useNavigate()
@@ -37,6 +37,7 @@ export default function ClockOut() {
       .from('attendance_logs')
       .select('*')
       .eq('user_id', user.id)
+      .eq('work_date', todayDateStr())
       .eq('status', 'active')
       .is('clock_out_at', null)
       .order('clock_in_at', { ascending: false })

@@ -22,6 +22,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { uploadPhoto } from '../lib/storage'
 import { getCurrentPosition, distanceMeters, formatDistance, type Coords } from '../lib/geo'
+import { todayDateStr } from '../lib/format'
 
 type Phase = 'verifying' | 'verified' | 'too_far' | 'error'
 
@@ -74,6 +75,25 @@ export default function ClockIn() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Only one log per day: if today's log already exists, don't allow another.
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('attendance_logs')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('work_date', todayDateStr())
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          toast('info', 'You already have a log for today.')
+          navigate('/', { replace: true })
+        }
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
   const save = async () => {
     if (!user || !coords) return
     setSaving(true)
@@ -83,6 +103,7 @@ export default function ClockIn() {
       const { error } = await supabase.from('attendance_logs').insert({
         user_id: user.id,
         work_location_id: workLocation?.id ?? null,
+        work_date: todayDateStr(),
         clock_in_at: new Date().toISOString(),
         clock_in_lat: coords.latitude,
         clock_in_lng: coords.longitude,
@@ -96,7 +117,11 @@ export default function ClockIn() {
       toast('success', "You're clocked in! Have a great day.")
       navigate('/', { replace: true })
     } catch (err) {
-      toast('error', (err as Error).message || 'Could not clock in.')
+      const e = err as { code?: string; message?: string }
+      toast(
+        'error',
+        e.code === '23505' ? 'You already have a log for today.' : e.message || 'Could not clock in.',
+      )
       setSaving(false)
       setConfirm(false)
     }
