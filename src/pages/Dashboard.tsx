@@ -312,7 +312,8 @@ function TotalHoursCard({
 function ActiveCard({ log, onClockOut }: { log: AttendanceLog; onClockOut: () => void }) {
   const [, setTick] = useState(0)
   useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 1000 * 30)
+    // Tick every second so the elapsed timer stays live.
+    const t = setInterval(() => setTick((n) => n + 1), 1000)
     return () => clearInterval(t)
   }, [])
   return (
@@ -329,7 +330,7 @@ function ActiveCard({ log, onClockOut }: { log: AttendanceLog; onClockOut: () =>
       <p className="mt-1 text-sm text-white/85">Since {fmtTime(log.clock_in_at)} · {log.title || 'Working'}</p>
       <button
         onClick={onClockOut}
-        className="btn mt-5 w-full bg-white text-mint-600 shadow-card hover:brightness-105"
+        className="btn mt-5 w-full bg-white text-mint-500 shadow-card hover:brightness-105"
       >
         <LogOut size={18} /> Clock out for the day
       </button>
