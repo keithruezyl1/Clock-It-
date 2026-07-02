@@ -25,13 +25,18 @@ export default function Login() {
     setBusy(true)
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { full_name: name.trim() } },
         })
         if (error) throw error
-        toast('success', 'Account created! Welcome to Clock It!')
+        if (data.session) {
+          toast('success', 'Account created! Welcome to Clock It!')
+        } else {
+          toast('info', 'Almost there! Check your email to confirm your account.')
+          setMode('signin')
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
