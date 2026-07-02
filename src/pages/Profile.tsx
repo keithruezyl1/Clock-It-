@@ -1,0 +1,417 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import {
+  Pencil,
+  LogOut,
+  MapPin,
+  Building2,
+  Download,
+  Smartphone,
+  Clock3,
+  CalendarCheck,
+  Crosshair,
+  ChevronRight,
+  Share,
+  Check,
+} from 'lucide-react'
+import { Page } from '../components/Page'
+import { Modal } from '../components/Modal'
+import { ConfirmModal } from '../components/ConfirmModal'
+import { Spinner } from '../components/Spinner'
+import { useToast } from '../components/Toast'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
+import { useInstallPrompt } from '../lib/useInstallPrompt'
+import { getCurrentPosition, reverseGeocode, distanceMeters, type Coords, type ReverseGeocode } from '../lib/geo'
+
+export default function Profile() {
+  const navigate = useNavigate()
+  const toast = useToast()
+  const { user, profile, workLocation, refreshProfile, refreshWorkLocation, signOut } = useAuth()
+  const install = useInstallPrompt()
+
+  const [stats, setStats] = useState({ logs: 0, minutes: 0 })
+  const [editOpen, setEditOpen] = useState(false)
+  const [name, setName] = useState(profile?.full_name ?? '')
+  const [phone, setPhone] = useState(profile?.phone ?? '')
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  const [wlOpen, setWlOpen] = useState(false)
+  const [signOutOpen, setSignOutOpen] = useState(false)
+  const [iosOpen, setIosOpen] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('attendance_logs')
+      .select('clock_in_at, clock_out_at')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        const rows = data ?? []
+        let minutes = 0
+        for (const r of rows) {
+          if (r.clock_in_at && r.clock_out_at) {
+            minutes += (new Date(r.clock_out_at).getTime() - new Date(r.clock_in_at).getTime()) / 60000
+          }
+        }
+        setStats({ logs: rows.length, minutes: Math.round(minutes) })
+      })
+  }, [user])
+
+  const saveProfile = async () => {
+    if (!user) return
+    setSavingProfile(true)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: name.trim(), phone: phone.trim() || null })
+      .eq('id', user.id)
+    setSavingProfile(false)
+    if (error) {
+      toast('error', error.message)
+      return
+    }
+    await refreshProfile()
+    toast('success', 'Profile updated.')
+    setEditOpen(false)
+  }
+
+  const initials = (profile?.full_name || user?.email || '?')
+    .split(' ')
+    .map((s) => s[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+
+  const totalHours = Math.floor(stats.minutes / 60)
+  const totalMins = stats.minutes % 60
+
+  const handleInstall = async () => {
+    if (install.isIOS && !install.canInstall) {
+      setIosOpen(true)
+      return
+    }
+    const res = await install.promptInstall()
+    if (res === 'accepted') toast('success', 'Clock It! added to your home screen!')
+    else if (res === 'unavailable') setIosOpen(true)
+  }
+
+  return (
+    <Page className="px-5 safe-top">
+      <header className="py-6">
+        <h1 className="text-2xl font-black text-lavender-700">Profile</h1>
+      </header>
+
+      {/* identity */}
+      <div className="card flex items-center gap-4 p-5">
+        {profile?.avatar_url ? (
+          <img src={profile.avatar_url} alt="" className="h-16 w-16 rounded-3xl object-cover" />
+        ) : (
+          <div className="grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-lavender-400 to-lavender-600 text-xl font-black text-white">
+            {initials}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-lg font-extrabold text-lavender-700">
+            {profile?.full_name || 'Your name'}
+          </p>
+          <p className="truncate text-[13px] text-lavender-700/60">{user?.email}</p>
+          {profile?.phone && (
+            <p className="truncate text-[13px] text-lavender-700/60">{profile.phone}</p>
+          )}
+        </div>
+        <button
+          onClick={() => {
+            setName(profile?.full_name ?? '')
+            setPhone(profile?.phone ?? '')
+            setEditOpen(true)
+          }}
+          className="grid h-10 w-10 place-items-center rounded-2xl bg-lavender-100 text-lavender-600"
+          aria-label="Edit profile"
+        >
+          <Pencil size={18} />
+        </button>
+      </div>
+
+      {/* stats */}
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <StatTile
+          icon={<CalendarCheck size={20} />}
+          value={String(stats.logs)}
+          label="Total logs"
+          color="from-mint-400 to-mint-500"
+        />
+        <StatTile
+          icon={<Clock3 size={20} />}
+          value={`${totalHours}h ${totalMins}m`}
+          label="Hours logged"
+          color="from-lavender-400 to-lavender-600"
+        />
+      </div>
+
+      {/* workplace */}
+      <SectionTitle>Workplace</SectionTitle>
+      <div className="card p-5">
+        <div className="flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-mint-100 text-mint-500">
+            <Building2 size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-extrabold text-lavender-700">
+              {workLocation?.place_name || workLocation?.city || 'No workplace set'}
+            </p>
+            <p className="text-[13px] leading-snug text-lavender-700/60">
+              {workLocation?.address || 'Set your workplace to clock in.'}
+            </p>
+            {workLocation && (
+              <p className="mt-1 flex items-center gap-1 text-[12px] font-semibold text-lavender-400">
+                <MapPin size={12} /> {(workLocation.radius_meters / 1000).toFixed(0)} km clock-in radius
+              </p>
+            )}
+          </div>
+        </div>
+        <button className="btn-soft mt-4 w-full" onClick={() => setWlOpen(true)}>
+          <Crosshair size={16} /> Update workplace
+        </button>
+      </div>
+
+      {/* install */}
+      <SectionTitle>App</SectionTitle>
+      <button
+        onClick={handleInstall}
+        disabled={install.installed}
+        className="card flex w-full items-center gap-4 p-5 text-left active:scale-[0.99] transition disabled:opacity-70"
+      >
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-sky-500 text-white">
+          {install.installed ? <Check size={22} /> : <Download size={22} />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-extrabold text-lavender-700">
+            {install.installed ? 'Installed' : 'Add Clock It! to your home screen'}
+          </p>
+          <p className="text-[13px] text-lavender-700/60">
+            {install.installed
+              ? 'You’re running the installed app.'
+              : 'Install for quick, full-screen access.'}
+          </p>
+        </div>
+        {!install.installed && <ChevronRight size={18} className="text-lavender-300" />}
+      </button>
+
+      {/* sign out */}
+      <button
+        className="btn mt-6 w-full bg-white/70 text-peach-500 shadow-card hover:bg-white"
+        onClick={() => setSignOutOpen(true)}
+      >
+        <LogOut size={18} /> Sign out
+      </button>
+
+      <p className="mt-6 text-center text-xs text-lavender-700/40">Clock It! · v1.0</p>
+
+      {/* edit profile */}
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit profile">
+        <div className="space-y-3">
+          <div>
+            <label className="label">Full name</label>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Phone (optional)</label>
+            <input
+              className="input"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. +63 900 000 0000"
+              inputMode="tel"
+            />
+          </div>
+          <button
+            className="btn-primary mt-2 w-full"
+            onClick={saveProfile}
+            disabled={savingProfile || name.trim().length < 2}
+          >
+            {savingProfile ? <Spinner size={18} /> : 'Save changes'}
+          </button>
+        </div>
+      </Modal>
+
+      <UpdateWorkplaceModal
+        open={wlOpen}
+        onClose={() => setWlOpen(false)}
+        onSaved={refreshWorkLocation}
+      />
+
+      <ConfirmModal
+        open={signOutOpen}
+        title="Sign out?"
+        icon={<LogOut size={26} />}
+        tone="danger"
+        confirmLabel="Sign out"
+        message="You’ll need to sign in again to access your logs."
+        onConfirm={async () => {
+          setSignOutOpen(false)
+          await signOut()
+          navigate('/auth', { replace: true })
+        }}
+        onCancel={() => setSignOutOpen(false)}
+      />
+
+      {/* iOS install instructions */}
+      <Modal open={iosOpen} onClose={() => setIosOpen(false)} title="Add to Home Screen">
+        <div className="space-y-3 text-[15px] text-lavender-700/80">
+          <p>To install Clock It! on your device:</p>
+          <ol className="space-y-2">
+            <li className="flex items-center gap-3 rounded-2xl bg-lavender-50 p-3">
+              <Share size={20} className="shrink-0 text-lavender-500" />
+              Tap the <b>Share</b> button in your browser.
+            </li>
+            <li className="flex items-center gap-3 rounded-2xl bg-lavender-50 p-3">
+              <Smartphone size={20} className="shrink-0 text-lavender-500" />
+              Choose <b>Add to Home Screen</b>.
+            </li>
+          </ol>
+          <button className="btn-primary mt-2 w-full" onClick={() => setIosOpen(false)}>
+            Got it
+          </button>
+        </div>
+      </Modal>
+    </Page>
+  )
+}
+
+function StatTile({
+  icon,
+  value,
+  label,
+  color,
+}: {
+  icon: React.ReactNode
+  value: string
+  label: string
+  color: string
+}) {
+  return (
+    <div className="card p-4">
+      <div className={`grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br ${color} text-white`}>
+        {icon}
+      </div>
+      <p className="mt-3 text-2xl font-black text-lavender-700">{value}</p>
+      <p className="text-[13px] font-semibold text-lavender-700/60">{label}</p>
+    </div>
+  )
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="mb-3 mt-7 ml-1 text-sm font-extrabold uppercase tracking-wide text-lavender-400">{children}</h2>
+}
+
+function UpdateWorkplaceModal({
+  open,
+  onClose,
+  onSaved,
+}: {
+  open: boolean
+  onClose: () => void
+  onSaved: () => Promise<void>
+}) {
+  const toast = useToast()
+  const { user } = useAuth()
+  const [radius, setRadius] = useState(3000)
+  const [coords, setCoords] = useState<Coords | null>(null)
+  const [geo, setGeo] = useState<ReverseGeocode | null>(null)
+  const [locating, setLocating] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const detect = async () => {
+    setLocating(true)
+    try {
+      const c = await getCurrentPosition()
+      setCoords(c)
+      setGeo(await reverseGeocode(c))
+    } catch (err) {
+      toast('error', (err as Error).message)
+    } finally {
+      setLocating(false)
+    }
+  }
+
+  const save = async () => {
+    if (!user || !coords) return
+    setSaving(true)
+    try {
+      await supabase.from('work_locations').update({ is_active: false }).eq('user_id', user.id)
+      const { error } = await supabase.from('work_locations').insert({
+        user_id: user.id,
+        label: 'Workplace',
+        place_name: geo?.place_name ?? null,
+        address: geo?.address ?? null,
+        city: geo?.city ?? null,
+        region: geo?.region ?? null,
+        country: geo?.country ?? null,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        radius_meters: radius,
+        is_active: true,
+      })
+      if (error) throw error
+      await onSaved()
+      toast('success', 'Workplace updated.')
+      setCoords(null)
+      setGeo(null)
+      onClose()
+    } catch (err) {
+      toast('error', (err as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Update workplace">
+      <div className="space-y-4">
+        {!coords ? (
+          <button
+            onClick={detect}
+            disabled={locating}
+            className="flex w-full flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-lavender-200 bg-white/60 py-8 text-lavender-600 hover:border-lavender-400 transition"
+          >
+            {locating ? <Spinner size={26} /> : <Crosshair size={28} />}
+            <span className="font-bold">
+              {locating ? 'Finding location…' : 'Use my current location'}
+            </span>
+          </button>
+        ) : (
+          <div className="rounded-2xl bg-lavender-50 p-4">
+            <p className="font-bold text-lavender-700">
+              {geo?.place_name || geo?.city || 'Selected location'}
+            </p>
+            <p className="mt-1 text-[13px] text-lavender-700/70">{geo?.address || '—'}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="label">Clock-in radius</label>
+          <div className="flex gap-2">
+            {[1000, 3000, 5000].map((r) => (
+              <button
+                key={r}
+                onClick={() => setRadius(r)}
+                className={`flex-1 rounded-2xl border-2 py-3 text-sm font-bold transition ${
+                  radius === r
+                    ? 'border-lavender-400 bg-lavender-100 text-lavender-700'
+                    : 'border-lavender-100 bg-white/60 text-lavender-400'
+                }`}
+              >
+                {r / 1000} km
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button className="btn-primary w-full" onClick={save} disabled={!coords || saving}>
+          {saving ? <Spinner size={18} /> : 'Save workplace'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
