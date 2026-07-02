@@ -33,16 +33,17 @@ export function LogDetailModal({ log, onClose, onDelete }: Props) {
             </div>
           </div>
 
-          {log.title && (
-            <div>
-              <p className="text-sm font-extrabold text-lavender-700">{log.title}</p>
-            </div>
-          )}
-
-          {log.clock_in_distance_m != null && (
-            <div className="flex items-center gap-2 text-[13px] text-lavender-700/60">
-              <MapPin size={15} className="text-mint-500" />
-              Verified {Math.round(log.clock_in_distance_m)} m from workplace
+          {(log.title || log.clock_in_distance_m != null) && (
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-w-0 flex-1 truncate text-sm font-extrabold text-lavender-700">
+                {log.title || 'Daily log'}
+              </p>
+              {log.clock_in_distance_m != null && (
+                <div className="flex shrink-0 items-center gap-1.5 text-[13px] text-lavender-700/60">
+                  <MapPin size={15} className="text-mint-500" />
+                  Verified {Math.round(log.clock_in_distance_m)} m from workplace
+                </div>
+              )}
             </div>
           )}
 

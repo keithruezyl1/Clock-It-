@@ -25,7 +25,8 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useInstallPrompt } from '../lib/useInstallPrompt'
 import { getCurrentPosition, reverseGeocode, distanceMeters, type Coords, type ReverseGeocode } from '../lib/geo'
-import { CLOCK_IN_RADIUS_METERS } from '../lib/constants'
+import { CLOCK_IN_RADIUS_METERS, DEFAULT_MAP_CENTER } from '../lib/constants'
+import { MapPicker } from '../components/MapPicker'
 
 export default function Profile() {
   const navigate = useNavigate()
@@ -37,6 +38,7 @@ export default function Profile() {
   const [editOpen, setEditOpen] = useState(false)
   const [name, setName] = useState(profile?.full_name ?? '')
   const [phone, setPhone] = useState(profile?.phone ?? '')
+  const [targetHrs, setTargetHrs] = useState<number | ''>(profile?.ojt_target_hours ?? '')
   const [savingProfile, setSavingProfile] = useState(false)
 
   const [wlOpen, setWlOpen] = useState(false)
@@ -66,7 +68,11 @@ export default function Profile() {
     setSavingProfile(true)
     const { error } = await supabase
       .from('profiles')
-      .update({ full_name: name.trim(), phone: phone.trim() || null })
+      .update({
+        full_name: name.trim(),
+        phone: phone.trim() || null,
+        ojt_target_hours: typeof targetHrs === 'number' ? targetHrs : null,
+      })
       .eq('id', user.id)
     setSavingProfile(false)
     if (error) {
@@ -137,6 +143,7 @@ export default function Profile() {
           onClick={() => {
             setName(profile?.full_name ?? '')
             setPhone(profile?.phone ?? '')
+            setTargetHrs(profile?.ojt_target_hours ?? '')
             setEditOpen(true)
           }}
           className="grid h-10 w-10 place-items-center rounded-2xl bg-lavender-100 text-lavender-600"
@@ -243,6 +250,25 @@ export default function Profile() {
               inputMode="tel"
             />
           </div>
+          <div>
+            <label className="label">OJT target hours</label>
+            <input
+              className="input"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={5000}
+              placeholder="e.g. 500"
+              value={targetHrs}
+              onChange={(e) => {
+                const v = e.target.value
+                setTargetHrs(v === '' ? '' : Math.max(0, Math.min(5000, Math.round(Number(v)))))
+              }}
+            />
+            <p className="mt-1 ml-1 text-[12px] text-lavender-700/50">
+              Used to show your remaining hours and celebrate when you finish.
+            </p>
+          </div>
           <button
             className="btn-primary mt-2 w-full"
             onClick={saveProfile}
@@ -340,6 +366,8 @@ function UpdateWorkplaceModal({
   const [coords, setCoords] = useState<Coords | null>(null)
   const [geo, setGeo] = useState<ReverseGeocode | null>(null)
   const [locating, setLocating] = useState(false)
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [showMap, setShowMap] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const detect = async () => {
@@ -353,6 +381,23 @@ function UpdateWorkplaceModal({
     } finally {
       setLocating(false)
     }
+  }
+
+  // A manual pin from the map: update coords instantly, then look up its address.
+  const handlePick = (latitude: number, longitude: number) => {
+    const c = { latitude, longitude }
+    setCoords(c)
+    setGeoLoading(true)
+    reverseGeocode(c)
+      .then(setGeo)
+      .finally(() => setGeoLoading(false))
+  }
+
+  const close = () => {
+    setShowMap(false)
+    setCoords(null)
+    setGeo(null)
+    onClose()
   }
 
   const save = async () => {
@@ -378,6 +423,7 @@ function UpdateWorkplaceModal({
       toast('success', 'Workplace updated.')
       setCoords(null)
       setGeo(null)
+      setShowMap(false)
       onClose()
     } catch (err) {
       toast('error', (err as Error).message)
@@ -387,25 +433,43 @@ function UpdateWorkplaceModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Update workplace">
+    <Modal open={open} onClose={close} title="Update workplace">
       <div className="space-y-4">
-        {!coords ? (
-          <button
-            onClick={detect}
-            disabled={locating}
-            className="flex w-full flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-lavender-200 bg-white/60 py-8 text-lavender-600 hover:border-lavender-400 transition"
-          >
-            {locating ? <Spinner size={26} /> : <Crosshair size={28} />}
-            <span className="font-bold">
-              {locating ? 'Finding location…' : 'Use my current location'}
-            </span>
-          </button>
-        ) : (
+        {coords ? (
           <div className="rounded-2xl bg-lavender-50 p-4">
             <p className="font-bold text-lavender-700">
-              {geo?.place_name || geo?.city || 'Selected location'}
+              {geoLoading ? 'Looking up address…' : geo?.place_name || geo?.city || 'Pinned location'}
             </p>
-            <p className="mt-1 text-[13px] text-lavender-700/70">{geo?.address || '—'}</p>
+            <p className="mt-1 text-[13px] text-lavender-700/70">
+              {geo?.address || `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`}
+            </p>
+          </div>
+        ) : (
+          <p className="rounded-2xl bg-lavender-50 p-4 text-center text-[13px] text-lavender-700/60">
+            Detect your location, or pin it manually on the map.
+          </p>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={detect} disabled={locating} className="btn-soft flex-1">
+            {locating ? <Spinner size={18} /> : <Crosshair size={16} />}
+            {coords ? 'Retry' : 'Use my location'}
+          </button>
+          <button onClick={() => setShowMap((s) => !s)} className="btn-soft flex-1">
+            <MapPin size={16} /> {showMap ? 'Hide map' : 'Pin on map'}
+          </button>
+        </div>
+
+        {showMap && (
+          <div className="space-y-2">
+            <MapPicker
+              lat={coords?.latitude ?? DEFAULT_MAP_CENTER.latitude}
+              lng={coords?.longitude ?? DEFAULT_MAP_CENTER.longitude}
+              onPick={handlePick}
+            />
+            <p className="text-center text-[12px] text-lavender-400">
+              Tap the map or drag the pin to set your workplace.
+            </p>
           </div>
         )}
 

@@ -374,21 +374,22 @@ function DoneCard({ log }: { log: AttendanceLog }) {
     <motion.div
       initial={{ scale: 0.97, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className="card p-6"
+      className="relative overflow-hidden rounded-4xl bg-gradient-to-br from-sky-400 to-lavender-500 p-6 text-white shadow-soft"
     >
-      <p className="text-sm font-bold uppercase tracking-wide text-lavender-400">Today · done</p>
-      <p className="mt-1 text-2xl font-black text-lavender-700">
+      <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/15" />
+      <p className="text-sm font-bold uppercase tracking-wide text-white/80">Today · done</p>
+      <p className="mt-1 text-2xl font-black">
         {fmtDuration(log.clock_in_at, log.clock_out_at)} logged
       </p>
-      <div className="mt-2 flex gap-4 text-sm font-semibold text-lavender-600">
+      <div className="mt-2 flex gap-4 text-sm font-semibold text-white/90">
         <span className="flex items-center gap-1">
-          <LogIn size={15} className="text-mint-500" /> {fmtTime(log.clock_in_at)}
+          <LogIn size={15} /> {fmtTime(log.clock_in_at)}
         </span>
         <span className="flex items-center gap-1">
-          <LogOut size={15} className="text-peach-400" /> {fmtTime(log.clock_out_at)}
+          <LogOut size={15} /> {fmtTime(log.clock_out_at)}
         </span>
       </div>
-      <p className="mt-5 rounded-2xl bg-lavender-50 p-3 text-center text-[13px] font-semibold text-lavender-600">
+      <p className="mt-5 rounded-2xl bg-white/20 p-3 text-center text-[13px] font-semibold text-white">
         That’s your log for today — see you tomorrow! 🌙
       </p>
     </motion.div>
