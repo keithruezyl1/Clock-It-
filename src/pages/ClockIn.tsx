@@ -127,7 +127,7 @@ export default function ClockIn() {
             <VerifyView
               phase={phase}
               distance={distance}
-              radius={workLocation?.radius_meters ?? 3000}
+              radius={workLocation?.radius_meters ?? 10000}
               placeName={workLocation?.place_name || workLocation?.city || 'your workplace'}
               errMsg={errMsg}
               onRetry={verify}

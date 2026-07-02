@@ -20,8 +20,8 @@ import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { getCurrentPosition, reverseGeocode, type Coords, type ReverseGeocode } from '../lib/geo'
+import { CLOCK_IN_RADIUS_METERS } from '../lib/constants'
 
-const RADIUS_OPTIONS = [1000, 3000, 5000]
 const HOURS_PRESETS = [200, 300, 400, 500, 600]
 
 export default function Onboarding() {
@@ -36,7 +36,6 @@ export default function Onboarding() {
 
   const [coords, setCoords] = useState<Coords | null>(null)
   const [geo, setGeo] = useState<ReverseGeocode | null>(null)
-  const [radius, setRadius] = useState(3000)
   const [locating, setLocating] = useState(false)
   const [confirmLoc, setConfirmLoc] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -77,7 +76,7 @@ export default function Onboarding() {
         country: geo?.country ?? null,
         latitude: coords.latitude,
         longitude: coords.longitude,
-        radius_meters: radius,
+        radius_meters: CLOCK_IN_RADIUS_METERS,
         is_active: true,
       })
       if (locErr) throw locErr
@@ -108,8 +107,6 @@ export default function Onboarding() {
       key="loc"
       coords={coords}
       geo={geo}
-      radius={radius}
-      setRadius={setRadius}
       locating={locating}
       onDetect={detectLocation}
       onEdit={() => setConfirmLoc(true)}
@@ -207,7 +204,7 @@ export default function Onboarding() {
               )}
             </div>
             <p className="mt-3 text-center text-[13px] text-lavender-700/60">
-              You’ll be able to clock in within {(radius / 1000).toFixed(0)} km of here.
+              You’ll be able to clock in within {CLOCK_IN_RADIUS_METERS / 1000} km of here.
             </p>
           </div>
         }
@@ -315,16 +312,12 @@ function OjtHoursStep({
 function LocationStep({
   coords,
   geo,
-  radius,
-  setRadius,
   locating,
   onDetect,
   onEdit,
 }: {
   coords: Coords | null
   geo: ReverseGeocode | null
-  radius: number
-  setRadius: (r: number) => void
   locating: boolean
   onDetect: () => void
   onEdit: () => void
@@ -376,24 +369,9 @@ function LocationStep({
         </div>
       )}
 
-      <div className="mt-6">
-        <label className="label">Allowed clock-in radius</label>
-        <div className="flex gap-2">
-          {RADIUS_OPTIONS.map((r) => (
-            <button
-              key={r}
-              onClick={() => setRadius(r)}
-              className={`flex-1 rounded-2xl border-2 py-3 text-sm font-bold transition ${
-                radius === r
-                  ? 'border-lavender-400 bg-lavender-100 text-lavender-700'
-                  : 'border-lavender-100 bg-white/60 text-lavender-400'
-              }`}
-            >
-              {r / 1000} km
-            </button>
-          ))}
-        </div>
-      </div>
+      <p className="mt-6 rounded-2xl bg-lavender-50 p-4 text-center text-[13px] font-semibold text-lavender-600">
+        You’ll be able to clock in within {CLOCK_IN_RADIUS_METERS / 1000} km of your workplace.
+      </p>
     </div>
   )
 }

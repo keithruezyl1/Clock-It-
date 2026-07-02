@@ -25,6 +25,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useInstallPrompt } from '../lib/useInstallPrompt'
 import { getCurrentPosition, reverseGeocode, distanceMeters, type Coords, type ReverseGeocode } from '../lib/geo'
+import { CLOCK_IN_RADIUS_METERS } from '../lib/constants'
 
 export default function Profile() {
   const navigate = useNavigate()
@@ -336,7 +337,6 @@ function UpdateWorkplaceModal({
 }) {
   const toast = useToast()
   const { user } = useAuth()
-  const [radius, setRadius] = useState(3000)
   const [coords, setCoords] = useState<Coords | null>(null)
   const [geo, setGeo] = useState<ReverseGeocode | null>(null)
   const [locating, setLocating] = useState(false)
@@ -370,7 +370,7 @@ function UpdateWorkplaceModal({
         country: geo?.country ?? null,
         latitude: coords.latitude,
         longitude: coords.longitude,
-        radius_meters: radius,
+        radius_meters: CLOCK_IN_RADIUS_METERS,
         is_active: true,
       })
       if (error) throw error
@@ -409,24 +409,9 @@ function UpdateWorkplaceModal({
           </div>
         )}
 
-        <div>
-          <label className="label">Clock-in radius</label>
-          <div className="flex gap-2">
-            {[1000, 3000, 5000].map((r) => (
-              <button
-                key={r}
-                onClick={() => setRadius(r)}
-                className={`flex-1 rounded-2xl border-2 py-3 text-sm font-bold transition ${
-                  radius === r
-                    ? 'border-lavender-400 bg-lavender-100 text-lavender-700'
-                    : 'border-lavender-100 bg-white/60 text-lavender-400'
-                }`}
-              >
-                {r / 1000} km
-              </button>
-            ))}
-          </div>
-        </div>
+        <p className="rounded-2xl bg-lavender-50 p-4 text-center text-[13px] font-semibold text-lavender-600">
+          You’ll be able to clock in within {CLOCK_IN_RADIUS_METERS / 1000} km of your workplace.
+        </p>
 
         <button className="btn-primary w-full" onClick={save} disabled={!coords || saving}>
           {saving ? <Spinner size={18} /> : 'Save workplace'}

@@ -45,7 +45,7 @@ create table if not exists public.work_locations (
   country       text,
   latitude      double precision not null,
   longitude     double precision not null,
-  radius_meters integer not null default 3000,
+  radius_meters integer not null default 10000,
   is_active     boolean not null default true,
   created_at    timestamptz not null default now()
 );
