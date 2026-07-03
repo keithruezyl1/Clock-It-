@@ -4,20 +4,43 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Semantic aliases driven by CSS variables (see src/index.css / themes).
         lavender: {
-          50: '#faf7ff', 100: '#f3ecff', 200: '#e9ddff', 300: '#d6c2ff',
-          400: '#bda0fb', 500: '#a78bfa', 600: '#8b5cf6', 700: '#7c3aed',
+          50: 'rgb(var(--c-primary-50) / <alpha-value>)',
+          100: 'rgb(var(--c-primary-100) / <alpha-value>)',
+          200: 'rgb(var(--c-primary-200) / <alpha-value>)',
+          300: 'rgb(var(--c-primary-300) / <alpha-value>)',
+          400: 'rgb(var(--c-primary-400) / <alpha-value>)',
+          500: 'rgb(var(--c-primary-500) / <alpha-value>)',
+          600: 'rgb(var(--c-primary-600) / <alpha-value>)',
+          700: 'rgb(var(--c-primary-700) / <alpha-value>)',
         },
         mint: {
-          100: '#e6fbf3', 200: '#c5f5e4', 300: '#9bedd0', 400: '#5fdcb3', 500: '#34d399',
+          100: 'rgb(var(--c-success-100) / <alpha-value>)',
+          200: 'rgb(var(--c-success-200) / <alpha-value>)',
+          300: 'rgb(var(--c-success-300) / <alpha-value>)',
+          400: 'rgb(var(--c-success-400) / <alpha-value>)',
+          500: 'rgb(var(--c-success-500) / <alpha-value>)',
         },
         peach: {
-          100: '#fff1ec', 200: '#ffe0d4', 300: '#ffc4ad', 400: '#ffa588', 500: '#fb8c66',
+          100: 'rgb(var(--c-warning-100) / <alpha-value>)',
+          200: 'rgb(var(--c-warning-200) / <alpha-value>)',
+          300: 'rgb(var(--c-warning-300) / <alpha-value>)',
+          400: 'rgb(var(--c-warning-400) / <alpha-value>)',
+          500: 'rgb(var(--c-warning-500) / <alpha-value>)',
         },
         sky: {
-          100: '#eaf5ff', 200: '#d2e9ff', 300: '#a9d4ff', 400: '#7bbcff', 500: '#5aa6ff',
+          100: 'rgb(var(--c-info-100) / <alpha-value>)',
+          200: 'rgb(var(--c-info-200) / <alpha-value>)',
+          300: 'rgb(var(--c-info-300) / <alpha-value>)',
+          400: 'rgb(var(--c-info-400) / <alpha-value>)',
+          500: 'rgb(var(--c-info-500) / <alpha-value>)',
         },
-        cream: '#fdfbff',
+        cream: 'rgb(var(--c-cream) / <alpha-value>)',
+        surface: {
+          DEFAULT: 'rgb(var(--surface) / <alpha-value>)',
+          line: 'rgb(var(--surface-line) / <alpha-value>)',
+        },
       },
       fontFamily: {
         sans: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
@@ -26,9 +49,9 @@ export default {
         '4xl': '2rem',
       },
       boxShadow: {
-        soft: '0 10px 40px -12px rgba(124, 58, 237, 0.18)',
-        card: '0 4px 24px -8px rgba(124, 58, 237, 0.14)',
-        glow: '0 0 0 4px rgba(167, 139, 250, 0.18)',
+        soft: '0 10px 40px -12px rgb(var(--c-primary-700) / 0.18)',
+        card: '0 4px 24px -8px rgb(var(--c-primary-700) / 0.14)',
+        glow: '0 0 0 4px rgb(var(--c-primary-500) / 0.18)',
       },
       keyframes: {
         'pop-in': {

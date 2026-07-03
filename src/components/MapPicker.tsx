@@ -6,9 +6,9 @@ const pinIcon = L.divIcon({
   className: '',
   html: `<div style="
       width:26px;height:26px;border-radius:50% 50% 50% 0;
-      background:linear-gradient(135deg,#a78bfa,#8b5cf6);
+      background:linear-gradient(135deg,rgb(var(--c-primary-500)),rgb(var(--c-primary-600)));
       transform:rotate(-45deg);
-      box-shadow:0 4px 10px rgba(124,58,237,0.4);
+      box-shadow:0 4px 10px rgb(var(--c-primary-700) / 0.4);
       border:2.5px solid #fff;"></div>`,
   iconSize: [26, 26],
   iconAnchor: [13, 26],

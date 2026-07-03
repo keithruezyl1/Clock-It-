@@ -4,6 +4,45 @@
 
 :root {
   color-scheme: light;
+
+  /* Semantic color tokens (RGB triplets so Tailwind can apply alpha).
+     primary = lavender, success = mint, warning = peach, info = sky. */
+  --c-primary-50: 250 247 255;
+  --c-primary-100: 243 236 255;
+  --c-primary-200: 233 221 255;
+  --c-primary-300: 214 194 255;
+  --c-primary-400: 189 160 251;
+  --c-primary-500: 167 139 250;
+  --c-primary-600: 139 92 246;
+  --c-primary-700: 124 58 237;
+
+  --c-success-100: 230 251 243;
+  --c-success-200: 197 245 228;
+  --c-success-300: 155 237 208;
+  --c-success-400: 95 220 179;
+  --c-success-500: 52 211 153;
+
+  --c-warning-100: 255 241 236;
+  --c-warning-200: 255 224 212;
+  --c-warning-300: 255 196 173;
+  --c-warning-400: 255 165 136;
+  --c-warning-500: 251 140 102;
+
+  --c-info-100: 234 245 255;
+  --c-info-200: 210 233 255;
+  --c-info-300: 169 212 255;
+  --c-info-400: 123 188 255;
+  --c-info-500: 90 166 255;
+
+  --c-cream: 253 251 255;
+
+  /* Surfaces & text */
+  --bg-from: 250 247 255;
+  --bg-mid: 243 236 255;
+  --bg-to: 234 245 255;
+  --surface: 255 255 255;
+  --surface-line: 255 255 255;
+  --text-body: 59 47 92;
 }
 
 * {
@@ -18,9 +57,9 @@ body,
 
 body {
   margin: 0;
-  background: linear-gradient(160deg, #faf7ff 0%, #f3ecff 45%, #eaf5ff 100%);
+  background: linear-gradient(160deg, rgb(var(--bg-from)) 0%, rgb(var(--bg-mid)) 45%, rgb(var(--bg-to)) 100%);
   background-attachment: fixed;
-  color: #3b2f5c;
+  color: rgb(var(--text-body));
   font-family: 'Nunito', ui-rounded, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
@@ -28,7 +67,7 @@ body {
 
 @layer components {
   .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/60;
+    @apply bg-surface/70 backdrop-blur-xl border border-surface-line/60;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 font-bold rounded-2xl px-5 py-3.5
@@ -40,19 +79,19 @@ body {
            shadow-soft hover:shadow-glow hover:brightness-105;
   }
   .btn-ghost {
-    @apply btn bg-white/70 text-lavender-700 border border-lavender-200 hover:bg-white;
+    @apply btn bg-surface/70 text-lavender-700 border border-lavender-200 hover:bg-surface;
   }
   .btn-soft {
     @apply btn bg-lavender-100 text-lavender-700 hover:bg-lavender-200;
   }
   .input {
-    @apply w-full rounded-2xl border-2 border-lavender-100 bg-white/80 px-4 py-3.5
+    @apply w-full rounded-2xl border-2 border-lavender-100 bg-surface/80 px-4 py-3.5
            text-[15px] text-lavender-700 placeholder:text-lavender-300
            focus:border-lavender-400 focus:outline-none focus:ring-4 focus:ring-lavender-100
            transition-all;
   }
   .card {
-    @apply bg-white/80 backdrop-blur-md rounded-3xl shadow-card border border-white/70;
+    @apply bg-surface/80 backdrop-blur-md rounded-3xl shadow-card border border-surface-line/70;
   }
   .label {
     @apply block text-sm font-bold text-lavender-700/80 mb-1.5 ml-1;
