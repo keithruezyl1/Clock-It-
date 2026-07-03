@@ -70,6 +70,7 @@ export default {
       animation: {
         'pop-in': 'pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
         float: 'float 3s ease-in-out infinite',
+        shimmer: 'shimmer 1.6s ease-in-out infinite',
       },
     },
   },

@@ -3,13 +3,24 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react'
 
 type ToastKind = 'success' | 'error' | 'info'
-interface Toast {
+
+interface ToastOptions {
+  /** Auto-dismiss delay in ms (default 3800). */
+  duration?: number
+  /** Optional action button (e.g. "Undo"). */
+  actionLabel?: string
+  onAction?: () => void
+}
+
+interface Toast extends ToastOptions {
   id: number
   kind: ToastKind
   message: string
 }
 
-const ToastCtx = createContext<(kind: ToastKind, message: string) => void>(() => {})
+type PushToast = (kind: ToastKind, message: string, options?: ToastOptions) => void
+
+const ToastCtx = createContext<PushToast>(() => {})
 
 const styles: Record<ToastKind, { bg: string; icon: ReactNode }> = {
   success: { bg: 'from-mint-400 to-mint-500', icon: <CheckCircle2 size={20} /> },
@@ -21,11 +32,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   let seq = 0
 
-  const push = useCallback((kind: ToastKind, message: string) => {
+  const push = useCallback((kind: ToastKind, message: string, options?: ToastOptions) => {
     const id = Date.now() + seq++
-    setToasts((t) => [...t, { id, kind, message }])
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3800)
+    setToasts((t) => [...t, { id, kind, message, ...options }])
+    setTimeout(
+      () => setToasts((t) => t.filter((x) => x.id !== id)),
+      options?.duration ?? 3800,
+    )
   }, [])
+
+  const dismiss = (id: number) => setToasts((s) => s.filter((x) => x.id !== id))
 
   return (
     <ToastCtx.Provider value={push}>
@@ -43,8 +59,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               <span className="shrink-0">{styles[t.kind].icon}</span>
               <p className="flex-1 text-sm font-semibold leading-snug">{t.message}</p>
+              {t.actionLabel && (
+                <button
+                  onClick={() => {
+                    t.onAction?.()
+                    dismiss(t.id)
+                  }}
+                  className="shrink-0 rounded-full bg-white/25 px-3 py-1 text-[13px] font-bold hover:bg-white/35"
+                >
+                  {t.actionLabel}
+                </button>
+              )}
               <button
-                onClick={() => setToasts((s) => s.filter((x) => x.id !== t.id))}
+                onClick={() => dismiss(t.id)}
                 className="shrink-0 opacity-70 hover:opacity-100"
                 aria-label="Dismiss"
               >

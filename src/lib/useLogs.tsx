@@ -55,6 +55,19 @@ export function LogsProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(t)
   }, [])
 
+  // Fresh data when the PWA is brought back to the foreground or reconnects.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onVisible)
+    }
+  }, [refresh])
+
   const mutate = useCallback((fn: (logs: AttendanceLog[]) => AttendanceLog[]) => {
     setLogs(fn)
   }, [])

@@ -1,22 +1,22 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   LogIn,
   LogOut,
   CalendarDays,
   Clock,
   ChevronRight,
-  Trash2,
+  MapPin,
   Timer,
   Download,
+  RefreshCw,
 } from 'lucide-react'
 import { EmptyLogsIllustration } from '../components/illustrations/EmptyLogs'
 import { Page } from '../components/Page'
 import { Wordmark } from '../components/Logo'
-import { Spinner } from '../components/Spinner'
+import { Skeleton } from '../components/Skeleton'
 import { LogDetailModal } from '../components/LogDetailModal'
-import { ConfirmModal } from '../components/ConfirmModal'
 import { CelebrationModal } from '../components/CelebrationModal'
 import { ExportModal } from '../components/ExportModal'
 import { StaleSessionModal } from '../components/StaleSessionModal'
@@ -25,6 +25,8 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useLogs } from '../lib/useLogs'
 import { avgDayMinutes, logMinutes } from '../lib/stats'
+import { queryPermission } from '../lib/permissions'
+import { getCurrentPosition, distanceMeters, formatDistance } from '../lib/geo'
 import type { AttendanceLog } from '../lib/types'
 import { fmtTime, fmtDateLong, fmtDuration } from '../lib/format'
 import { addDays, format } from 'date-fns'
@@ -65,10 +67,9 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const toast = useToast()
   const { user, profile } = useAuth()
-  const { logs, loading, today, mutate, refresh } = useLogs()
+  const { logs, loading, error, today, mutate, refresh } = useLogs()
+  const reduceMotion = useReducedMotion()
   const [selected, setSelected] = useState<AttendanceLog | null>(null)
-  const [toDelete, setToDelete] = useState<AttendanceLog | null>(null)
-  const [deleting, setDeleting] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
 
   // Sessions left open on a previous day — prompt to close them, one at a time.
@@ -143,20 +144,57 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user, targetHours, totalMinutes])
 
-  const confirmDelete = async () => {
-    if (!toDelete) return
-    setDeleting(true)
-    const { error } = await supabase.from('attendance_logs').delete().eq('id', toDelete.id)
-    setDeleting(false)
-    if (error) {
-      toast('error', error.message)
-      return
+  // Undo-able delete: remove optimistically, commit to Supabase after the
+  // undo window (or immediately if the page unmounts first).
+  const pendingDeletes = useRef(new Map<string, { log: AttendanceLog; index: number; timer: number }>())
+
+  const restoreLog = (log: AttendanceLog, index: number) =>
+    mutate((l) => {
+      const i = Math.min(Math.max(index, 0), l.length)
+      return [...l.slice(0, i), log, ...l.slice(i)]
+    })
+
+  const commitDelete = async (id: string) => {
+    const entry = pendingDeletes.current.get(id)
+    if (!entry) return
+    pendingDeletes.current.delete(id)
+    const { error: err } = await supabase.from('attendance_logs').delete().eq('id', id)
+    if (err) {
+      toast('error', err.message)
+      restoreLog(entry.log, entry.index)
     }
-    toast('success', 'Log deleted.')
-    mutate((l) => l.filter((x) => x.id !== toDelete.id))
-    setToDelete(null)
-    setSelected(null)
   }
+
+  const deleteLog = (log: AttendanceLog) => {
+    setSelected(null)
+    const index = logs.findIndex((l) => l.id === log.id)
+    mutate((l) => l.filter((x) => x.id !== log.id))
+    const timer = window.setTimeout(() => void commitDelete(log.id), 5000)
+    pendingDeletes.current.set(log.id, { log, index, timer })
+    toast('info', 'Log deleted.', {
+      duration: 5000,
+      actionLabel: 'Undo',
+      onAction: () => {
+        const entry = pendingDeletes.current.get(log.id)
+        if (!entry) return
+        clearTimeout(entry.timer)
+        pendingDeletes.current.delete(log.id)
+        restoreLog(entry.log, entry.index)
+      },
+    })
+  }
+
+  useEffect(
+    () => () => {
+      // Leaving the page commits any still-pending deletes right away.
+      for (const [id, entry] of pendingDeletes.current) {
+        clearTimeout(entry.timer)
+        pendingDeletes.current.delete(id)
+        void supabase.from('attendance_logs').delete().eq('id', id)
+      }
+    },
+    [],
+  )
 
   return (
     <Page className="px-5 safe-top">
@@ -181,11 +219,23 @@ export default function Dashboard() {
         </div>
       </header>
 
+      {error && !loading && (
+        <div className="card mb-4 flex items-center gap-3 p-4">
+          <p className="flex-1 text-[13px] font-semibold text-lavender-700/70">
+            Couldn’t load your logs.
+          </p>
+          <button className="btn-soft !px-4 !py-2 text-sm" onClick={() => void refresh()}>
+            <RefreshCw size={14} /> Retry
+          </button>
+        </div>
+      )}
+
       {/* Status hero */}
       {loading ? (
-        <div className="grid h-44 place-items-center card">
-          <Spinner size={26} className="text-lavender-400" />
-        </div>
+        <>
+          <Skeleton className="h-44 rounded-4xl" />
+          <Skeleton className="mt-4 h-32 rounded-4xl" />
+        </>
       ) : activeLog ? (
         <ActiveCard log={activeLog} onClockOut={() => navigate('/clock-out')} />
       ) : todayCompleted ? (
@@ -203,7 +253,13 @@ export default function Dashboard() {
         <span className="text-xs font-bold text-lavender-400">{logs.length} total</span>
       </div>
 
-      {loading ? null : logs.length === 0 ? (
+      {loading ? (
+        <div className="space-y-2.5 pb-4">
+          <Skeleton className="h-[76px] rounded-3xl" />
+          <Skeleton className="h-[76px] rounded-3xl" />
+          <Skeleton className="h-[76px] rounded-3xl" />
+        </div>
+      ) : logs.length === 0 ? (
         <div className="card flex flex-col items-center gap-2 py-10 text-center">
           <EmptyLogsIllustration className="h-28 w-auto" />
           <p className="font-bold text-lavender-600">No logs yet</p>
@@ -213,12 +269,15 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-2.5 pb-4">
+          <AnimatePresence initial={!reduceMotion}>
           {logs.map((log, i) => (
             <motion.button
               key={log.id}
-              initial={{ opacity: 0, y: 10 }}
+              layout={!reduceMotion}
+              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.04, 0.3) }}
+              exit={reduceMotion ? undefined : { opacity: 0, scale: 0.95 }}
+              transition={{ delay: Math.min(i * 0.04, 0.3), layout: { delay: 0 } }}
               onClick={() => setSelected(log)}
               className="card flex w-full items-center gap-3 p-4 text-left active:scale-[0.985] transition"
             >
@@ -252,28 +311,18 @@ export default function Dashboard() {
               <ChevronRight size={18} className="shrink-0 text-lavender-300" />
             </motion.button>
           ))}
+          </AnimatePresence>
         </div>
       )}
 
       <LogDetailModal
         log={selected}
         onClose={() => setSelected(null)}
-        onDelete={(l) => setToDelete(l)}
+        onDelete={deleteLog}
         onCloseSession={(l) => {
           setSelected(null)
           setStaleEdit(l)
         }}
-      />
-      <ConfirmModal
-        open={!!toDelete}
-        title="Delete this log?"
-        icon={<Trash2 size={26} />}
-        tone="danger"
-        confirmLabel="Delete"
-        loading={deleting}
-        message="This will permanently remove the log and its details. This can’t be undone."
-        onConfirm={confirmDelete}
-        onCancel={() => setToDelete(null)}
       />
       <CelebrationModal
         open={celebrate}
@@ -326,7 +375,7 @@ function TotalHoursCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mt-4 rounded-4xl bg-gradient-to-br from-mint-400 to-mint-500 p-5 text-white shadow-soft"
+      className="mt-4 rounded-4xl bg-gradient-to-br from-mint-400 to-mint-500 p-6 text-white shadow-soft"
     >
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
@@ -362,6 +411,7 @@ function TotalHoursCard({
 }
 
 function ProgressRing({ pct, size = 96, stroke = 9 }: { pct: number; size?: number; stroke?: number }) {
+  const reduceMotion = useReducedMotion()
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   return (
@@ -384,9 +434,9 @@ function ProgressRing({ pct, size = 96, stroke = 9 }: { pct: number; size?: numb
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
-          initial={{ strokeDashoffset: c }}
+          initial={reduceMotion ? false : { strokeDashoffset: c }}
           animate={{ strokeDashoffset: c * (1 - pct / 100) }}
-          transition={{ duration: 0.9, ease: 'easeOut' }}
+          transition={{ duration: reduceMotion ? 0 : 0.9, ease: 'easeOut' }}
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center">
@@ -438,6 +488,32 @@ function ActiveCard({ log, onClockOut }: { log: AttendanceLog; onClockOut: () =>
 }
 
 function IdleCard({ onClockIn }: { onClockIn: () => void }) {
+  const { workLocation } = useAuth()
+
+  // Distance-to-workplace hint, shown only if location permission is already
+  // granted — never prompt from the dashboard.
+  const [distanceHint, setDistanceHint] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    if (!workLocation) return
+    queryPermission('location').then((state) => {
+      if (state !== 'granted' || cancelled) return
+      getCurrentPosition()
+        .then((c) => {
+          if (cancelled) return
+          const d = distanceMeters(c, {
+            latitude: workLocation.latitude,
+            longitude: workLocation.longitude,
+          })
+          setDistanceHint(formatDistance(d))
+        })
+        .catch(() => {})
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [workLocation])
+
   return (
     <motion.div
       initial={{ scale: 0.97, opacity: 0 }}
@@ -448,6 +524,11 @@ function IdleCard({ onClockIn }: { onClockIn: () => void }) {
       <div className="absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10" />
       <p className="text-2xl font-black">Start your work day</p>
       <p className="mt-1 text-sm text-white/85">{dailyWelcome()}</p>
+      {distanceHint && (
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-bold">
+          <MapPin size={12} /> ~{distanceHint} from your workplace
+        </p>
+      )}
       <button
         onClick={onClockIn}
         className="btn mt-5 w-full bg-white text-lavender-600 shadow-card hover:brightness-105"

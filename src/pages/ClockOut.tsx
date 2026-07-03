@@ -70,6 +70,7 @@ export default function ClockOut() {
         })
         .eq('id', log.id)
       if (error) throw error
+      if (navigator.vibrate) navigator.vibrate(10)
       toast('success', 'Clocked out. Nice work today!')
       navigate('/', { replace: true })
     } catch (err) {

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Skeleton } from '../components/Skeleton'
 import { addWeeks, endOfWeek, format, isSameWeek, setHours, startOfDay, startOfWeek } from 'date-fns'
 import { ChevronLeft, ChevronRight, Flame, Trophy, Sunrise, Clock, CalendarDays, BarChart3 } from 'lucide-react'
 import { Page } from '../components/Page'
@@ -18,6 +19,7 @@ function fmtHours(minutes: number): string {
 
 export default function Stats() {
   const { logs, loading } = useLogs()
+  const reduceMotion = useReducedMotion()
   const [weekOffset, setWeekOffset] = useState(0)
 
   const weekStart = useMemo(
@@ -41,6 +43,14 @@ export default function Stats() {
         <h1 className="text-2xl font-black text-lavender-700">Stats</h1>
       </header>
 
+      {loading ? (
+        <>
+          <Skeleton className="h-60 rounded-3xl" />
+          <Skeleton className="mt-4 h-28 rounded-3xl" />
+          <Skeleton className="mt-4 h-24 rounded-3xl" />
+        </>
+      ) : (
+      <>
       {/* Week chart */}
       <div className="card p-5">
         <div className="flex items-center justify-between">
@@ -80,9 +90,13 @@ export default function Stats() {
                 <div className="flex h-28 w-full items-end overflow-hidden rounded-xl bg-lavender-100/60">
                   <motion.div
                     className={`w-full rounded-xl ${isToday ? 'bg-lavender-500' : 'bg-lavender-300'}`}
-                    initial={{ height: 0 }}
+                    initial={reduceMotion ? false : { height: 0 }}
                     animate={{ height: `${pct}%` }}
-                    transition={{ duration: 0.5, ease: 'easeOut', delay: i * 0.04 }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : { duration: 0.5, ease: 'easeOut', delay: i * 0.04 }
+                    }
                   />
                 </div>
                 <span
@@ -175,6 +189,8 @@ export default function Stats() {
           </div>
         )}
       </div>
+      </>
+      )}
     </Page>
   )
 }

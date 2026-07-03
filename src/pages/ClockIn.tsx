@@ -114,6 +114,7 @@ export default function ClockIn() {
         status: 'active',
       })
       if (error) throw error
+      if (navigator.vibrate) navigator.vibrate(10)
       toast('success', "You're clocked in! Have a great day.")
       navigate('/', { replace: true })
     } catch (err) {

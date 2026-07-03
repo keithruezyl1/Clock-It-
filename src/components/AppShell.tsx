@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { Home, BarChart3, User } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Home, BarChart3, User, WifiOff } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 
 const tabs = [
   { to: '/', label: 'Home', icon: Home, end: true },
@@ -8,9 +9,39 @@ const tabs = [
   { to: '/profile', label: 'Profile', icon: User, end: false },
 ]
 
+function useOnline() {
+  const [online, setOnline] = useState(navigator.onLine)
+  useEffect(() => {
+    const up = () => setOnline(true)
+    const down = () => setOnline(false)
+    window.addEventListener('online', up)
+    window.addEventListener('offline', down)
+    return () => {
+      window.removeEventListener('online', up)
+      window.removeEventListener('offline', down)
+    }
+  }, [])
+  return online
+}
+
 export function AppShell() {
+  const online = useOnline()
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col">
+      <AnimatePresence>
+        {!online && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <p className="flex items-center justify-center gap-2 bg-peach-100 py-2 text-[13px] font-bold text-peach-500 safe-top">
+              <WifiOff size={15} /> You’re offline — changes won’t save.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <main className="flex-1 pb-28">
         <Outlet />
       </main>
@@ -22,7 +53,7 @@ export function AppShell() {
               key={t.to}
               to={t.to}
               end={t.end}
-              className="relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-2 text-xs font-bold"
+              className="relative flex min-h-[44px] flex-1 flex-col items-center gap-0.5 rounded-2xl py-2 text-xs font-bold"
             >
               {({ isActive }) => (
                 <>
