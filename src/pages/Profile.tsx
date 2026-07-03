@@ -22,6 +22,7 @@ import { Page } from '../components/Page'
 import { Modal } from '../components/Modal'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { PermissionsSection } from '../components/PermissionsSection'
+import { ExportModal } from '../components/ExportModal'
 import { Spinner } from '../components/Spinner'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
@@ -49,6 +50,7 @@ export default function Profile() {
   const [wlOpen, setWlOpen] = useState(false)
   const [signOutOpen, setSignOutOpen] = useState(false)
   const [iosOpen, setIosOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -209,8 +211,21 @@ export default function Profile() {
       <SectionTitle>Permissions</SectionTitle>
       <PermissionsSection />
 
-      {/* install */}
+      {/* app */}
       <SectionTitle>App</SectionTitle>
+      <button
+        onClick={() => setExportOpen(true)}
+        className="card mb-3 flex w-full items-center gap-4 p-5 text-left active:scale-[0.99] transition"
+      >
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-mint-400 to-mint-500 text-white">
+          <Download size={22} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-extrabold text-lavender-700">Export hours</p>
+          <p className="text-[13px] text-lavender-700/60">Download your logs as an Excel file.</p>
+        </div>
+        <ChevronRight size={18} className="text-lavender-300" />
+      </button>
       <button
         onClick={handleInstall}
         disabled={install.installed}
@@ -293,6 +308,8 @@ export default function Profile() {
         onClose={() => setWlOpen(false)}
         onSaved={refreshWorkLocation}
       />
+
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
 
       <ConfirmModal
         open={signOutOpen}

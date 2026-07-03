@@ -10,6 +10,7 @@ import {
   Coffee,
   Trash2,
   Timer,
+  Download,
 } from 'lucide-react'
 import { Page } from '../components/Page'
 import { Wordmark } from '../components/Logo'
@@ -17,6 +18,7 @@ import { Spinner } from '../components/Spinner'
 import { LogDetailModal } from '../components/LogDetailModal'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { CelebrationModal } from '../components/CelebrationModal'
+import { ExportModal } from '../components/ExportModal'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -64,6 +66,7 @@ export default function Dashboard() {
   const [selected, setSelected] = useState<AttendanceLog | null>(null)
   const [toDelete, setToDelete] = useState<AttendanceLog | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
   // Track the local calendar day so the UI rolls over at midnight even if the
   // app is left open — yesterday's session then counts as yesterday, not today.
@@ -155,9 +158,18 @@ export default function Dashboard() {
             <Wordmark className="text-2xl" />
           </h1>
         </div>
-        <div className="flex items-center gap-1.5 rounded-2xl bg-surface/70 px-3 py-2 text-xs font-bold text-lavender-500 shadow-card">
-          <CalendarDays size={15} />
-          {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setExportOpen(true)}
+            className="grid h-9 w-9 place-items-center rounded-2xl bg-surface/70 text-lavender-500 shadow-card active:scale-95 transition"
+            aria-label="Export hours"
+          >
+            <Download size={16} />
+          </button>
+          <div className="flex items-center gap-1.5 rounded-2xl bg-surface/70 px-3 py-2 text-xs font-bold text-lavender-500 shadow-card">
+            <CalendarDays size={15} />
+            {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          </div>
         </div>
       </header>
 
@@ -258,6 +270,7 @@ export default function Dashboard() {
         hours={targetHours ?? 0}
         onClose={() => setCelebrate(false)}
       />
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} logs={logs} />
     </Page>
   )
 }
