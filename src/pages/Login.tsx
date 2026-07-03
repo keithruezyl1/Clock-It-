@@ -85,7 +85,7 @@ export default function Login() {
             {mode === m && (
               <motion.span
                 layoutId="auth-pill"
-                className="absolute inset-0 rounded-xl bg-white shadow-card"
+                className="absolute inset-0 rounded-xl bg-surface shadow-card"
                 transition={{ type: 'spring', stiffness: 400, damping: 32 }}
               />
             )}

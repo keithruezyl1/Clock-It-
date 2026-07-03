@@ -22,7 +22,7 @@ export function Modal({ open, onClose, title, children, hideClose }: ModalProps)
           exit={{ opacity: 0 }}
         >
           <div
-            className="absolute inset-0 bg-lavender-700/25 backdrop-blur-sm"
+            className="absolute inset-0 bg-backdrop/25 backdrop-blur-sm"
             onClick={onClose}
           />
           <motion.div

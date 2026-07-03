@@ -26,7 +26,7 @@ export function CelebrationModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 grid place-items-center bg-lavender-700/40 p-6 backdrop-blur-sm"
+          className="fixed inset-0 z-50 grid place-items-center bg-backdrop/40 p-6 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -38,7 +38,7 @@ export function CelebrationModal({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-            className="relative w-full max-w-sm overflow-hidden rounded-4xl bg-white p-7 text-center shadow-soft"
+            className="relative w-full max-w-sm overflow-hidden rounded-4xl bg-surface p-7 text-center shadow-soft"
           >
             {/* confetti burst */}
             <div className="pointer-events-none absolute left-1/2 top-16">

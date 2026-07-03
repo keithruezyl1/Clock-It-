@@ -132,7 +132,7 @@ export default function ClockIn() {
       <header className="flex items-center gap-3 py-5">
         <button
           onClick={() => navigate(-1)}
-          className="grid h-10 w-10 place-items-center rounded-2xl bg-white/70 text-lavender-600 shadow-card"
+          className="grid h-10 w-10 place-items-center rounded-2xl bg-surface/70 text-lavender-600 shadow-card"
           aria-label="Back"
         >
           <ArrowLeft size={20} />

@@ -43,6 +43,197 @@
   --surface: 255 255 255;
   --surface-line: 255 255 255;
   --text-body: 59 47 92;
+  --shadow-color: 124 58 237;
+  --backdrop: 124 58 237;
+}
+
+/* ---------------------------------------------------------------------------
+   Theme presets. Light variants override the primary scale + surfaces;
+   functional colors (success/warning/info) are shared. data-mode is always a
+   resolved value ("light" | "dark") — the "system" preference is resolved by
+   the boot script in index.html and by ThemeContext.
+   Dark scales keep 400–600 saturated (white button/gradient text still works)
+   while 50–200 turn dark and 700 turns light, so `text-*-700` headings stay
+   readable on dark surfaces without touching component classes.
+--------------------------------------------------------------------------- */
+
+[data-theme='mint'] {
+  --c-primary-50: 242 253 248;
+  --c-primary-100: 230 251 243;
+  --c-primary-200: 197 245 228;
+  --c-primary-300: 155 237 208;
+  --c-primary-400: 95 220 179;
+  --c-primary-500: 52 211 153;
+  --c-primary-600: 16 185 129;
+  --c-primary-700: 4 120 87;
+  --bg-from: 242 253 248;
+  --bg-mid: 230 251 243;
+  --bg-to: 234 245 255;
+  --text-body: 20 66 56;
+  --shadow-color: 4 120 87;
+  --backdrop: 6 78 59;
+}
+
+[data-theme='peach'] {
+  --c-primary-50: 255 248 245;
+  --c-primary-100: 255 241 236;
+  --c-primary-200: 255 224 212;
+  --c-primary-300: 255 196 173;
+  --c-primary-400: 255 165 136;
+  --c-primary-500: 251 140 102;
+  --c-primary-600: 244 112 63;
+  --c-primary-700: 194 65 12;
+  --bg-from: 255 250 246;
+  --bg-mid: 255 238 230;
+  --bg-to: 253 243 255;
+  --text-body: 91 44 26;
+  --shadow-color: 194 65 12;
+  --backdrop: 124 45 18;
+}
+
+[data-theme='sky'] {
+  --c-primary-50: 243 249 255;
+  --c-primary-100: 234 245 255;
+  --c-primary-200: 210 233 255;
+  --c-primary-300: 169 212 255;
+  --c-primary-400: 123 188 255;
+  --c-primary-500: 90 166 255;
+  --c-primary-600: 59 130 246;
+  --c-primary-700: 29 78 216;
+  --bg-from: 243 249 255;
+  --bg-mid: 231 243 255;
+  --bg-to: 240 240 255;
+  --text-body: 24 51 92;
+  --shadow-color: 29 78 216;
+  --backdrop: 30 58 138;
+}
+
+[data-theme='slate'] {
+  --c-primary-50: 248 250 252;
+  --c-primary-100: 241 245 249;
+  --c-primary-200: 226 232 240;
+  --c-primary-300: 203 213 225;
+  --c-primary-400: 148 163 184;
+  --c-primary-500: 100 116 139;
+  --c-primary-600: 71 85 105;
+  --c-primary-700: 51 65 85;
+  --bg-from: 250 251 253;
+  --bg-mid: 241 244 248;
+  --bg-to: 238 241 246;
+  --text-body: 51 65 85;
+  --shadow-color: 51 65 85;
+  --backdrop: 30 41 59;
+}
+
+/* Shared dark-mode values + lavender (default theme) dark variant. */
+[data-mode='dark'] {
+  color-scheme: dark;
+
+  --c-primary-50: 32 27 48;
+  --c-primary-100: 45 38 70;
+  --c-primary-200: 62 52 95;
+  --c-primary-300: 122 106 168;
+  --c-primary-400: 167 139 250;
+  --c-primary-500: 155 125 245;
+  --c-primary-600: 122 88 228;
+  --c-primary-700: 216 202 255;
+
+  --c-success-100: 16 46 37;
+  --c-success-200: 23 64 51;
+  --c-success-300: 38 98 78;
+  --c-success-400: 95 220 179;
+  --c-success-500: 52 211 153;
+
+  --c-warning-100: 58 33 25;
+  --c-warning-200: 79 43 31;
+  --c-warning-300: 122 63 45;
+  --c-warning-400: 255 165 136;
+  --c-warning-500: 251 140 102;
+
+  --c-info-100: 20 36 56;
+  --c-info-200: 27 49 75;
+  --c-info-300: 44 78 118;
+  --c-info-400: 123 188 255;
+  --c-info-500: 90 166 255;
+
+  --c-cream: 32 29 44;
+
+  --bg-from: 22 18 33;
+  --bg-mid: 29 23 44;
+  --bg-to: 19 21 36;
+  --surface: 38 33 56;
+  --surface-line: 84 74 122;
+  --text-body: 231 226 246;
+  --shadow-color: 0 0 0;
+  --backdrop: 5 4 12;
+}
+
+[data-theme='mint'][data-mode='dark'] {
+  --c-primary-50: 18 33 28;
+  --c-primary-100: 25 47 39;
+  --c-primary-200: 34 66 54;
+  --c-primary-300: 64 122 100;
+  --c-primary-400: 95 220 179;
+  --c-primary-500: 52 211 153;
+  --c-primary-600: 16 185 129;
+  --c-primary-700: 182 240 217;
+  --bg-from: 15 24 20;
+  --bg-mid: 19 31 26;
+  --bg-to: 14 26 27;
+  --surface: 29 42 36;
+  --surface-line: 66 96 82;
+  --text-body: 222 240 231;
+}
+
+[data-theme='peach'][data-mode='dark'] {
+  --c-primary-50: 40 28 23;
+  --c-primary-100: 56 38 31;
+  --c-primary-200: 79 52 42;
+  --c-primary-300: 143 91 70;
+  --c-primary-400: 255 165 136;
+  --c-primary-500: 251 140 102;
+  --c-primary-600: 234 100 60;
+  --c-primary-700: 255 212 192;
+  --bg-from: 29 21 18;
+  --bg-mid: 38 27 23;
+  --bg-to: 31 22 27;
+  --surface: 49 37 32;
+  --surface-line: 104 78 65;
+  --text-body: 246 231 223;
+}
+
+[data-theme='sky'][data-mode='dark'] {
+  --c-primary-50: 20 30 45;
+  --c-primary-100: 28 42 62;
+  --c-primary-200: 39 59 87;
+  --c-primary-300: 72 112 162;
+  --c-primary-400: 123 188 255;
+  --c-primary-500: 90 166 255;
+  --c-primary-600: 55 125 235;
+  --c-primary-700: 198 224 255;
+  --bg-from: 14 20 30;
+  --bg-mid: 19 26 39;
+  --bg-to: 14 22 34;
+  --surface: 28 37 52;
+  --surface-line: 61 84 116;
+  --text-body: 223 234 248;
+}
+
+[data-theme='slate'][data-mode='dark'] {
+  --c-primary-50: 24 28 35;
+  --c-primary-100: 34 40 49;
+  --c-primary-200: 49 57 70;
+  --c-primary-300: 100 113 131;
+  --c-primary-400: 165 178 196;
+  --c-primary-500: 130 144 165;
+  --c-primary-600: 95 110 132;
+  --c-primary-700: 220 228 238;
+  --bg-from: 16 18 22;
+  --bg-mid: 22 25 31;
+  --bg-to: 18 21 26;
+  --surface: 33 37 45;
+  --surface-line: 72 80 94;
+  --text-body: 226 232 240;
 }
 
 * {

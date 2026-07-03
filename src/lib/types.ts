@@ -5,6 +5,8 @@ export interface Profile {
   phone: string | null
   onboarded: boolean
   ojt_target_hours: number | null
+  theme: string | null
+  theme_mode: string | null
   created_at: string
   updated_at: string
 }

@@ -275,7 +275,7 @@ function OjtHoursStep({
               className={`flex-1 rounded-2xl border-2 py-3 text-sm font-bold transition ${
                 hours === h
                   ? 'border-peach-400 bg-peach-100 text-peach-500'
-                  : 'border-lavender-100 bg-white/60 text-lavender-400'
+                  : 'border-lavender-100 bg-surface/60 text-lavender-400'
               }`}
             >
               {h}h
@@ -336,7 +336,7 @@ function LocationStep({
         <button
           onClick={onDetect}
           disabled={locating}
-          className="mt-6 flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-lavender-200 bg-white/60 py-10 text-lavender-600 hover:border-lavender-400 hover:bg-white transition"
+          className="mt-6 flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-lavender-200 bg-surface/60 py-10 text-lavender-600 hover:border-lavender-400 hover:bg-surface transition"
         >
           {locating ? <Spinner size={28} /> : <Crosshair size={30} />}
           <span className="font-bold">
@@ -347,7 +347,7 @@ function LocationStep({
         <div className="mt-6 space-y-4">
           <div className="card overflow-hidden">
             <div className="flex items-center gap-3 bg-gradient-to-br from-mint-100 to-lavender-100 p-4">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-mint-500 shadow-card">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-surface text-mint-500 shadow-card">
                 <Building2 size={22} />
               </div>
               <div className="min-w-0 flex-1">

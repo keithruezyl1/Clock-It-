@@ -41,6 +41,7 @@ export default {
           DEFAULT: 'rgb(var(--surface) / <alpha-value>)',
           line: 'rgb(var(--surface-line) / <alpha-value>)',
         },
+        backdrop: 'rgb(var(--backdrop) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
@@ -49,8 +50,8 @@ export default {
         '4xl': '2rem',
       },
       boxShadow: {
-        soft: '0 10px 40px -12px rgb(var(--c-primary-700) / 0.18)',
-        card: '0 4px 24px -8px rgb(var(--c-primary-700) / 0.14)',
+        soft: '0 10px 40px -12px rgb(var(--shadow-color) / 0.18)',
+        card: '0 4px 24px -8px rgb(var(--shadow-color) / 0.14)',
         glow: '0 0 0 4px rgb(var(--c-primary-500) / 0.18)',
       },
       keyframes: {

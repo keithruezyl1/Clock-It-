@@ -31,7 +31,7 @@ export function PhotoPicker({ file, onChange }: PhotoPickerProps) {
           <button
             type="button"
             onClick={() => setCameraOpen(true)}
-            className="flex flex-col items-center gap-2 rounded-3xl border-2 border-dashed border-lavender-200 bg-white/60 py-6 text-lavender-600 hover:border-lavender-400 hover:bg-white transition"
+            className="flex flex-col items-center gap-2 rounded-3xl border-2 border-dashed border-lavender-200 bg-surface/60 py-6 text-lavender-600 hover:border-lavender-400 hover:bg-surface transition"
           >
             <Camera size={26} />
             <span className="text-sm font-bold">Camera</span>
@@ -39,7 +39,7 @@ export function PhotoPicker({ file, onChange }: PhotoPickerProps) {
           <button
             type="button"
             onClick={() => galleryRef.current?.click()}
-            className="flex flex-col items-center gap-2 rounded-3xl border-2 border-dashed border-lavender-200 bg-white/60 py-6 text-lavender-600 hover:border-lavender-400 hover:bg-white transition"
+            className="flex flex-col items-center gap-2 rounded-3xl border-2 border-dashed border-lavender-200 bg-surface/60 py-6 text-lavender-600 hover:border-lavender-400 hover:bg-surface transition"
           >
             <ImagePlus size={26} />
             <span className="text-sm font-bold">Gallery</span>

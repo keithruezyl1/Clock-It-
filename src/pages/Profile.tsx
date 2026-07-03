@@ -14,6 +14,9 @@ import {
   ChevronRight,
   Share,
   Check,
+  Sun,
+  Moon,
+  MonitorSmartphone,
 } from 'lucide-react'
 import { Page } from '../components/Page'
 import { Modal } from '../components/Modal'
@@ -22,6 +25,8 @@ import { PermissionsSection } from '../components/PermissionsSection'
 import { Spinner } from '../components/Spinner'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
+import { THEMES, type ThemeMode } from '../lib/themes'
 import { supabase } from '../lib/supabase'
 import { useInstallPrompt } from '../lib/useInstallPrompt'
 import { getCurrentPosition, reverseGeocode, distanceMeters, type Coords, type ReverseGeocode } from '../lib/geo'
@@ -196,6 +201,10 @@ export default function Profile() {
         </button>
       </div>
 
+      {/* appearance */}
+      <SectionTitle>Appearance</SectionTitle>
+      <AppearanceCard />
+
       {/* permissions */}
       <SectionTitle>Permissions</SectionTitle>
       <PermissionsSection />
@@ -225,7 +234,7 @@ export default function Profile() {
 
       {/* sign out */}
       <button
-        className="btn mt-6 w-full bg-white/70 text-peach-500 shadow-card hover:bg-white"
+        className="btn mt-6 w-full bg-surface/70 text-peach-500 shadow-card hover:bg-surface"
         onClick={() => setSignOutOpen(true)}
       >
         <LogOut size={18} /> Sign out
@@ -320,6 +329,53 @@ export default function Profile() {
         </div>
       </Modal>
     </Page>
+  )
+}
+
+const MODE_OPTIONS: { id: ThemeMode; label: string; icon: React.ReactNode }[] = [
+  { id: 'light', label: 'Light', icon: <Sun size={15} /> },
+  { id: 'dark', label: 'Dark', icon: <Moon size={15} /> },
+  { id: 'system', label: 'System', icon: <MonitorSmartphone size={15} /> },
+]
+
+function AppearanceCard() {
+  const { theme, mode, setTheme, setMode } = useTheme()
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTheme(t.id)}
+            aria-label={`${t.label} theme`}
+            title={t.label}
+            className={`grid h-11 w-11 place-items-center rounded-full transition active:scale-95 ${
+              theme === t.id ? 'ring-2 ring-lavender-400 ring-offset-2 ring-offset-surface' : ''
+            }`}
+          >
+            <span
+              className="grid h-9 w-9 place-items-center rounded-full text-white"
+              style={{ background: t.swatch }}
+            >
+              {theme === t.id && <Check size={16} strokeWidth={3} />}
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl bg-lavender-100 p-1">
+        {MODE_OPTIONS.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => setMode(m.id)}
+            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-[13px] font-bold transition ${
+              mode === m.id ? 'bg-surface text-lavender-700 shadow-card' : 'text-lavender-700/50'
+            }`}
+          >
+            {m.icon} {m.label}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 

@@ -155,7 +155,7 @@ export default function Dashboard() {
             <Wordmark className="text-2xl" />
           </h1>
         </div>
-        <div className="flex items-center gap-1.5 rounded-2xl bg-white/70 px-3 py-2 text-xs font-bold text-lavender-500 shadow-card">
+        <div className="flex items-center gap-1.5 rounded-2xl bg-surface/70 px-3 py-2 text-xs font-bold text-lavender-500 shadow-card">
           <CalendarDays size={15} />
           {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
         </div>
@@ -361,7 +361,7 @@ function IdleCard({ onClockIn }: { onClockIn: () => void }) {
       <p className="mt-1 text-sm text-white/85">{dailyWelcome()}</p>
       <button
         onClick={onClockIn}
-        className="btn mt-5 w-full bg-white text-lavender-700 shadow-card hover:brightness-105"
+        className="btn mt-5 w-full bg-white text-lavender-600 shadow-card hover:brightness-105"
       >
         <LogIn size={18} /> Clock in for the day
       </button>
