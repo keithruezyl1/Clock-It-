@@ -23,8 +23,10 @@ import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useLogs } from '../lib/useLogs'
+import { avgDayMinutes, logMinutes } from '../lib/stats'
 import type { AttendanceLog } from '../lib/types'
 import { fmtTime, fmtDateLong, fmtDuration } from '../lib/format'
+import { addDays, format } from 'date-fns'
 
 // A mix of motivating, warm, and playful greetings shown on the idle card.
 const WELCOME_MESSAGES = [
@@ -106,6 +108,29 @@ export default function Dashboard() {
     }
   }, [loading, user, targetHours, totalMinutes])
 
+  // One-time milestone toasts at 25/50/75%, same key pattern as the celebration.
+  useEffect(() => {
+    if (loading || !user || !targetHours) return
+    const pct = (totalMinutes / (targetHours * 60)) * 100
+    if (pct >= 100) return
+    const messages: Record<number, string> = {
+      25: 'A quarter of the way through your OJT! 💪',
+      50: 'Halfway there! 🎉',
+      75: '75% done — home stretch! 🚀',
+    }
+    let announce: string | null = null
+    for (const m of [25, 50, 75]) {
+      if (pct < m) break
+      const key = `ojt-milestone:${user.id}:${targetHours}:${m}`
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, '1')
+        announce = messages[m]
+      }
+    }
+    if (announce) toast('success', announce)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user, targetHours, totalMinutes])
+
   const confirmDelete = async () => {
     if (!toDelete) return
     setDeleting(true)
@@ -158,7 +183,7 @@ export default function Dashboard() {
       )}
 
       {/* Total hours */}
-      {!loading && <TotalHoursCard minutes={totalMinutes} targetHours={targetHours} />}
+      {!loading && <TotalHoursCard minutes={totalMinutes} targetHours={targetHours} logs={logs} />}
 
       {/* History */}
       <div className="mb-3 mt-8 flex items-center justify-between">
@@ -249,9 +274,11 @@ export default function Dashboard() {
 function TotalHoursCard({
   minutes,
   targetHours,
+  logs,
 }: {
   minutes: number
   targetHours: number | null
+  logs: AttendanceLog[]
 }) {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
@@ -260,44 +287,89 @@ function TotalHoursCard({
   const remainingH = targetMin != null ? Math.ceil(Math.max(0, targetMin - minutes) / 60) : null
   const pct = targetMin ? Math.min(100, Math.round((minutes / targetMin) * 100)) : null
 
+  // Projected finish: remaining work at the recent per-worked-day pace.
+  // Only shown once there's enough history to make it meaningful.
+  const projection = useMemo(() => {
+    if (targetMin == null || done) return null
+    const completedCount = logs.filter((l) => logMinutes(l) > 0).length
+    if (completedCount < 5) return null
+    const avg = avgDayMinutes(logs, 30)
+    if (!avg || avg <= 0) return null
+    const daysNeeded = Math.ceil((targetMin - minutes) / avg)
+    return format(addDays(new Date(), daysNeeded), 'MMM d')
+  }, [logs, targetMin, minutes, done])
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="mt-4 rounded-4xl bg-gradient-to-br from-mint-400 to-mint-500 p-5 text-white shadow-soft"
     >
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
           <p className="text-sm font-bold uppercase tracking-wide text-white/80">
             Total hours logged
           </p>
           <p className="mt-1 text-3xl font-black tabular-nums">
             {h}h {m}m
           </p>
+          {targetMin != null && (
+            <p className="mt-1 text-sm font-semibold text-white/95">
+              {done
+                ? '🎉 OJT complete — you did it!'
+                : `${remainingH} hour${remainingH === 1 ? '' : 's'} to go!`}
+            </p>
+          )}
+          {projection && (
+            <p className="mt-1.5 inline-block rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-bold">
+              On pace to finish ~{projection}
+            </p>
+          )}
         </div>
-        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/20">
-          <Timer size={24} />
-        </div>
-      </div>
-
-      {targetMin != null && (
-        <div className="mt-4">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-white/25">
-            <motion.div
-              className="h-full rounded-full bg-white"
-              initial={{ width: 0 }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.6, ease: 'easeOut' }}
-            />
+        {targetMin != null && pct != null ? (
+          <ProgressRing pct={pct} />
+        ) : (
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/20">
+            <Timer size={24} />
           </div>
-          <p className="mt-2 text-sm font-semibold text-white/95">
-            {done
-              ? '🎉 OJT complete — you did it!'
-              : `${remainingH} hour${remainingH === 1 ? '' : 's'} to go!`}
-          </p>
-        </div>
-      )}
+        )}
+      </div>
     </motion.div>
+  )
+}
+
+function ProgressRing({ pct, size = 96, stroke = 9 }: { pct: number; size?: number; stroke?: number }) {
+  const r = (size - stroke) / 2
+  const c = 2 * Math.PI * r
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="rgba(255,255,255,0.25)"
+          strokeWidth={stroke}
+        />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="white"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          initial={{ strokeDashoffset: c }}
+          animate={{ strokeDashoffset: c * (1 - pct / 100) }}
+          transition={{ duration: 0.9, ease: 'easeOut' }}
+        />
+      </svg>
+      <div className="absolute inset-0 grid place-items-center">
+        <span className="text-lg font-black tabular-nums">{pct}%</span>
+      </div>
+    </div>
   )
 }
 
