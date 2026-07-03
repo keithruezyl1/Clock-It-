@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import type { AttendanceLog } from '../lib/types'
-import { fmtTime, fmtDateLong, fmtDuration } from '../lib/format'
+import { fmtTime, fmtDateLong, fmtDuration, todayDateStr } from '../lib/format'
 import { reverseGeocode } from '../lib/geo'
-import { LogIn, LogOut, Clock, StickyNote, MapPin, Trash2 } from 'lucide-react'
+import { LogIn, LogOut, Clock, StickyNote, MapPin, Trash2, AlarmClockOff } from 'lucide-react'
 
 interface Props {
   log: AttendanceLog | null
   onClose: () => void
   onDelete?: (log: AttendanceLog) => void
+  /** Offered for active sessions left open on a previous day. */
+  onCloseSession?: (log: AttendanceLog) => void
 }
 
-export function LogDetailModal({ log, onClose, onDelete }: Props) {
+export function LogDetailModal({ log, onClose, onDelete, onCloseSession }: Props) {
+  const isStale = !!log && log.status === 'active' && log.work_date < todayDateStr()
   const hasCoords = !!log && log.clock_in_lat != null && log.clock_in_lng != null
 
   // Resolve where the clock-in happened from its saved coordinates.
@@ -91,6 +94,12 @@ export function LogDetailModal({ log, onClose, onDelete }: Props) {
             text={log.clock_out_notes}
             photo={log.clock_out_photo_url}
           />
+
+          {isStale && onCloseSession && (
+            <button className="btn-primary w-full" onClick={() => onCloseSession(log)}>
+              <AlarmClockOff size={16} /> Close this session
+            </button>
+          )}
 
           {onDelete && (
             <button

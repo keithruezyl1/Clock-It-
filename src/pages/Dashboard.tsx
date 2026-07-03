@@ -19,6 +19,7 @@ import { LogDetailModal } from '../components/LogDetailModal'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { CelebrationModal } from '../components/CelebrationModal'
 import { ExportModal } from '../components/ExportModal'
+import { StaleSessionModal } from '../components/StaleSessionModal'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -64,11 +65,22 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const toast = useToast()
   const { user, profile } = useAuth()
-  const { logs, loading, today, mutate } = useLogs()
+  const { logs, loading, today, mutate, refresh } = useLogs()
   const [selected, setSelected] = useState<AttendanceLog | null>(null)
   const [toDelete, setToDelete] = useState<AttendanceLog | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+
+  // Sessions left open on a previous day — prompt to close them, one at a time.
+  const [staleDismissed, setStaleDismissed] = useState<string[]>([])
+  const [staleEdit, setStaleEdit] = useState<AttendanceLog | null>(null)
+  const staleLogs = useMemo(
+    () => logs.filter((l) => l.status === 'active' && l.work_date < today),
+    [logs, today],
+  )
+  const stalePrompt =
+    staleEdit ?? (loading ? null : staleLogs.find((l) => !staleDismissed.includes(l.id)) ?? null)
+  const typicalDayMinutes = useMemo(() => avgDayMinutes(logs, 30), [logs])
 
   // Only today's session drives the "clocked in" hero. An open session from a
   // previous day stays in history dated to its own day; it no longer counts as
@@ -249,6 +261,10 @@ export default function Dashboard() {
         log={selected}
         onClose={() => setSelected(null)}
         onDelete={(l) => setToDelete(l)}
+        onCloseSession={(l) => {
+          setSelected(null)
+          setStaleEdit(l)
+        }}
       />
       <ConfirmModal
         open={!!toDelete}
@@ -267,6 +283,15 @@ export default function Dashboard() {
         onClose={() => setCelebrate(false)}
       />
       <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} logs={logs} />
+      <StaleSessionModal
+        log={stalePrompt}
+        suggestedMinutes={typicalDayMinutes}
+        onClose={() => {
+          if (stalePrompt && !staleEdit) setStaleDismissed((d) => [...d, stalePrompt.id])
+          setStaleEdit(null)
+        }}
+        onSaved={refresh}
+      />
     </Page>
   )
 }
@@ -382,6 +407,10 @@ function ActiveCard({ log, onClockOut }: { log: AttendanceLog; onClockOut: () =>
     const t = setInterval(() => setTick((n) => n + 1), 1000)
     return () => clearInterval(t)
   }, [])
+  const elapsedHours = log.clock_in_at
+    ? (Date.now() - new Date(log.clock_in_at).getTime()) / 3_600_000
+    : 0
+  const overlong = elapsedHours > 16
   return (
     <motion.div
       initial={{ scale: 0.97, opacity: 0 }}
@@ -390,10 +419,16 @@ function ActiveCard({ log, onClockOut }: { log: AttendanceLog; onClockOut: () =>
     >
       <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/15" />
       <p className="text-sm font-bold uppercase tracking-wide text-white/80">Clocked in</p>
-      <p className="mt-1 text-4xl font-black tabular-nums">
-        {fmtDuration(log.clock_in_at, null)}
+      {overlong ? (
+        <p className="mt-1 text-2xl font-black">Still working? 👀</p>
+      ) : (
+        <p className="mt-1 text-4xl font-black tabular-nums">{fmtDuration(log.clock_in_at, null)}</p>
+      )}
+      <p className="mt-1 text-sm text-white/85">
+        {overlong
+          ? `This session has been open since ${fmtTime(log.clock_in_at)} — close it if you're done.`
+          : `Since ${fmtTime(log.clock_in_at)} · ${log.title || 'Working'}`}
       </p>
-      <p className="mt-1 text-sm text-white/85">Since {fmtTime(log.clock_in_at)} · {log.title || 'Working'}</p>
       <button
         onClick={onClockOut}
         className="btn mt-5 w-full bg-white text-mint-500 shadow-card hover:brightness-105"
