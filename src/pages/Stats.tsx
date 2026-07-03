@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Skeleton } from '../components/Skeleton'
-import { addDays, addWeeks, endOfWeek, format, isSameWeek, setHours, startOfDay, startOfWeek } from 'date-fns'
-import { ChevronLeft, ChevronRight, Flame, Trophy, Sunrise, Clock, CalendarDays, BarChart3, RefreshCw } from 'lucide-react'
+import { addDays, addWeeks, format, isSameWeek, startOfWeek } from 'date-fns'
+import { ChevronLeft, ChevronRight, CalendarDays, RefreshCw } from 'lucide-react'
 import { Page } from '../components/Page'
 import { useLogs } from '../lib/useLogs'
-import { minutesPerDay, monthTotals, records, streaks } from '../lib/stats'
-import { fmtDateShort, fmtHoursMinutes, fmtTime, todayDateStr } from '../lib/format'
+import { minutesPerDay, monthTotals } from '../lib/stats'
+import { fmtHoursMinutes, todayDateStr } from '../lib/format'
 
-const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+// Weekdays only — OJT doesn't count Saturday and Sunday.
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F']
 
 export default function Stats() {
   const { logs, loading, error, refresh } = useLogs()
@@ -19,16 +20,17 @@ export default function Stats() {
     () => startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }),
     [weekOffset],
   )
-  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
-  const perDay = useMemo(() => minutesPerDay(logs, weekStart), [logs, weekStart])
+  const weekEnd = addDays(weekStart, 4) // Mon–Fri
+  const perDay = useMemo(
+    () => minutesPerDay(logs, weekStart).slice(0, DAY_LABELS.length),
+    [logs, weekStart],
+  )
   const weekTotal = perDay.reduce((a, b) => a + b, 0)
   const maxDay = Math.max(...perDay)
   const isCurrentWeek = isSameWeek(new Date(), weekStart, { weekStartsOn: 1 })
   const todayStr = todayDateStr()
 
   const month = useMemo(() => monthTotals(logs, new Date()), [logs])
-  const streak = useMemo(() => streaks(logs), [logs])
-  const recs = useMemo(() => records(logs), [logs])
 
   return (
     <Page className="px-5 safe-top">
@@ -51,7 +53,6 @@ export default function Stats() {
         <>
           <Skeleton className="h-60 rounded-3xl" />
           <Skeleton className="mt-4 h-28 rounded-3xl" />
-          <Skeleton className="mt-4 h-24 rounded-3xl" />
         </>
       ) : (
       <>
@@ -115,7 +116,7 @@ export default function Stats() {
       </div>
 
       {/* Month summary */}
-      <div className="card mt-4 p-5">
+      <div className="card mt-4 mb-4 p-5">
         <div className="flex items-center gap-2">
           <CalendarDays size={16} className="text-lavender-400" />
           <p className="font-extrabold text-lavender-700">{format(new Date(), 'MMMM')}</p>
@@ -138,75 +139,8 @@ export default function Stats() {
         </div>
       </div>
 
-      {/* Streak */}
-      <div className="card mt-4 flex items-center gap-4 p-5">
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-peach-400 to-peach-500 text-white">
-          <Flame size={24} />
-        </div>
-        <div className="flex-1">
-          <p className="text-xl font-black text-lavender-700">
-            {streak.current} day{streak.current === 1 ? '' : 's'}
-          </p>
-          <p className="text-[13px] font-semibold text-lavender-700/60">Current streak</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xl font-black text-lavender-700">{streak.best}</p>
-          <p className="text-[13px] font-semibold text-lavender-700/60">Best</p>
-        </div>
-      </div>
-
-      {/* Records */}
-      <div className="card mt-4 mb-4 p-5">
-        <div className="flex items-center gap-2">
-          <Trophy size={16} className="text-lavender-400" />
-          <p className="font-extrabold text-lavender-700">Records</p>
-        </div>
-        {logs.length === 0 && !loading ? (
-          <p className="mt-3 text-[13px] text-lavender-700/60">
-            Your records will show up once you start logging days.
-          </p>
-        ) : (
-          <div className="mt-3 space-y-3">
-            <RecordRow
-              icon={<Clock size={16} />}
-              label="Longest day"
-              value={
-                recs.longestDayMinutes > 0
-                  ? `${fmtHoursMinutes(recs.longestDayMinutes)}${recs.longestDayDate ? ` · ${fmtDateShort(recs.longestDayDate)}` : ''}`
-                  : '—'
-              }
-            />
-            <RecordRow
-              icon={<Sunrise size={16} />}
-              label="Earliest clock-in"
-              value={recs.earliestClockIn ? fmtTime(recs.earliestClockIn) : '—'}
-            />
-            <RecordRow
-              icon={<BarChart3 size={16} />}
-              label="Usual start time"
-              value={
-                recs.commonClockInHour != null
-                  ? format(setHours(startOfDay(new Date()), recs.commonClockInHour), 'h a')
-                  : '—'
-              }
-            />
-          </div>
-        )}
-      </div>
       </>
       )}
     </Page>
-  )
-}
-
-function RecordRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-lavender-100 text-lavender-500">
-        {icon}
-      </div>
-      <p className="flex-1 text-[13px] font-semibold text-lavender-700/60">{label}</p>
-      <p className="text-[14px] font-extrabold text-lavender-700">{value}</p>
-    </div>
   )
 }

@@ -23,6 +23,7 @@ import { supabase } from '../lib/supabase'
 import { useLogs } from '../lib/useLogs'
 import { uploadPhoto } from '../lib/storage'
 import { getCurrentPosition, distanceMeters, formatDistance, type Coords } from '../lib/geo'
+import { CLOCK_IN_RADIUS_METERS } from '../lib/constants'
 import { todayDateStr } from '../lib/format'
 
 type Phase = 'verifying' | 'verified' | 'too_far' | 'error'
@@ -156,7 +157,7 @@ export default function ClockIn() {
             <VerifyView
               phase={phase}
               distance={distance}
-              radius={workLocation?.radius_meters ?? 10000}
+              radius={workLocation?.radius_meters ?? CLOCK_IN_RADIUS_METERS}
               placeName={workLocation?.place_name || workLocation?.city || 'your workplace'}
               errMsg={errMsg}
               onRetry={verify}
