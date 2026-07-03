@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
@@ -22,11 +22,11 @@ import { ExportModal } from '../components/ExportModal'
 import { StaleSessionModal } from '../components/StaleSessionModal'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 import { useLogs } from '../lib/useLogs'
-import { avgDayMinutes, logMinutes } from '../lib/stats'
+import { avgDayMinutes, logMinutes, totalMinutes as sumMinutes } from '../lib/stats'
 import { queryPermission } from '../lib/permissions'
 import { getCurrentPosition, distanceMeters, formatDistance } from '../lib/geo'
+import { MAX_SHIFT_HOURS } from '../lib/constants'
 import type { AttendanceLog } from '../lib/types'
 import { fmtTime, fmtDateLong, fmtDuration } from '../lib/format'
 import { addDays, format } from 'date-fns'
@@ -67,21 +67,22 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const toast = useToast()
   const { user, profile } = useAuth()
-  const { logs, loading, error, today, mutate, refresh } = useLogs()
+  const { logs, loading, error, today, refresh, deleteLog, dismissedStale, dismissStale } =
+    useLogs()
   const reduceMotion = useReducedMotion()
   const [selected, setSelected] = useState<AttendanceLog | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
 
   // Sessions left open on a previous day — prompt to close them, one at a time.
-  const [staleDismissed, setStaleDismissed] = useState<string[]>([])
   const [staleEdit, setStaleEdit] = useState<AttendanceLog | null>(null)
   const staleLogs = useMemo(
     () => logs.filter((l) => l.status === 'active' && l.work_date < today),
     [logs, today],
   )
   const stalePrompt =
-    staleEdit ?? (loading ? null : staleLogs.find((l) => !staleDismissed.includes(l.id)) ?? null)
+    staleEdit ?? (loading ? null : staleLogs.find((l) => !dismissedStale.includes(l.id)) ?? null)
   const typicalDayMinutes = useMemo(() => avgDayMinutes(logs, 30), [logs])
+  const completedCount = useMemo(() => logs.filter((l) => logMinutes(l) > 0).length, [logs])
 
   // Only today's session drives the "clocked in" hero. An open session from a
   // previous day stays in history dated to its own day; it no longer counts as
@@ -97,15 +98,7 @@ export default function Dashboard() {
   )
 
   // Total logged minutes across all completed (clocked-out) sessions.
-  const totalMinutes = useMemo(() => {
-    let m = 0
-    for (const l of logs) {
-      if (l.clock_in_at && l.clock_out_at) {
-        m += (new Date(l.clock_out_at).getTime() - new Date(l.clock_in_at).getTime()) / 60000
-      }
-    }
-    return Math.round(m)
-  }, [logs])
+  const totalMinutes = useMemo(() => sumMinutes(logs), [logs])
 
   const targetHours = profile?.ojt_target_hours ?? null
 
@@ -125,7 +118,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (loading || !user || !targetHours) return
     const pct = (totalMinutes / (targetHours * 60)) * 100
-    if (pct >= 100) return
     const messages: Record<number, string> = {
       25: 'A quarter of the way through your OJT! 💪',
       50: 'Halfway there! 🎉',
@@ -134,67 +126,22 @@ export default function Dashboard() {
     let announce: string | null = null
     for (const m of [25, 50, 75]) {
       if (pct < m) break
+      // Always mark reached milestones (even at 100%+) so dropping back below
+      // the target later can't fire a stale "75% done" toast.
       const key = `ojt-milestone:${user.id}:${targetHours}:${m}`
       if (!localStorage.getItem(key)) {
         localStorage.setItem(key, '1')
         announce = messages[m]
       }
     }
-    if (announce) toast('success', announce)
+    if (announce && pct < 100) toast('success', announce)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user, targetHours, totalMinutes])
 
-  // Undo-able delete: remove optimistically, commit to Supabase after the
-  // undo window (or immediately if the page unmounts first).
-  const pendingDeletes = useRef(new Map<string, { log: AttendanceLog; index: number; timer: number }>())
-
-  const restoreLog = (log: AttendanceLog, index: number) =>
-    mutate((l) => {
-      const i = Math.min(Math.max(index, 0), l.length)
-      return [...l.slice(0, i), log, ...l.slice(i)]
-    })
-
-  const commitDelete = async (id: string) => {
-    const entry = pendingDeletes.current.get(id)
-    if (!entry) return
-    pendingDeletes.current.delete(id)
-    const { error: err } = await supabase.from('attendance_logs').delete().eq('id', id)
-    if (err) {
-      toast('error', err.message)
-      restoreLog(entry.log, entry.index)
-    }
-  }
-
-  const deleteLog = (log: AttendanceLog) => {
+  const handleDelete = (log: AttendanceLog) => {
     setSelected(null)
-    const index = logs.findIndex((l) => l.id === log.id)
-    mutate((l) => l.filter((x) => x.id !== log.id))
-    const timer = window.setTimeout(() => void commitDelete(log.id), 5000)
-    pendingDeletes.current.set(log.id, { log, index, timer })
-    toast('info', 'Log deleted.', {
-      duration: 5000,
-      actionLabel: 'Undo',
-      onAction: () => {
-        const entry = pendingDeletes.current.get(log.id)
-        if (!entry) return
-        clearTimeout(entry.timer)
-        pendingDeletes.current.delete(log.id)
-        restoreLog(entry.log, entry.index)
-      },
-    })
+    deleteLog(log)
   }
-
-  useEffect(
-    () => () => {
-      // Leaving the page commits any still-pending deletes right away.
-      for (const [id, entry] of pendingDeletes.current) {
-        clearTimeout(entry.timer)
-        pendingDeletes.current.delete(id)
-        void supabase.from('attendance_logs').delete().eq('id', id)
-      }
-    },
-    [],
-  )
 
   return (
     <Page className="px-5 safe-top">
@@ -245,7 +192,14 @@ export default function Dashboard() {
       )}
 
       {/* Total hours */}
-      {!loading && <TotalHoursCard minutes={totalMinutes} targetHours={targetHours} logs={logs} />}
+      {!loading && (
+        <TotalHoursCard
+          minutes={totalMinutes}
+          targetHours={targetHours}
+          typicalDayMinutes={typicalDayMinutes}
+          completedCount={completedCount}
+        />
+      )}
 
       {/* History */}
       <div className="mb-3 mt-8 flex items-center justify-between">
@@ -318,7 +272,7 @@ export default function Dashboard() {
       <LogDetailModal
         log={selected}
         onClose={() => setSelected(null)}
-        onDelete={deleteLog}
+        onDelete={handleDelete}
         onCloseSession={(l) => {
           setSelected(null)
           setStaleEdit(l)
@@ -334,7 +288,7 @@ export default function Dashboard() {
         log={stalePrompt}
         suggestedMinutes={typicalDayMinutes}
         onClose={() => {
-          if (stalePrompt && !staleEdit) setStaleDismissed((d) => [...d, stalePrompt.id])
+          if (stalePrompt && !staleEdit) dismissStale(stalePrompt.id)
           setStaleEdit(null)
         }}
         onSaved={refresh}
@@ -346,14 +300,14 @@ export default function Dashboard() {
 function TotalHoursCard({
   minutes,
   targetHours,
-  logs,
+  typicalDayMinutes,
+  completedCount,
 }: {
   minutes: number
   targetHours: number | null
-  logs: AttendanceLog[]
+  typicalDayMinutes: number | null
+  completedCount: number
 }) {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
   const targetMin = targetHours ? targetHours * 60 : null
   const done = targetMin != null && minutes >= targetMin
   const remainingH = targetMin != null ? Math.ceil(Math.max(0, targetMin - minutes) / 60) : null
@@ -363,13 +317,10 @@ function TotalHoursCard({
   // Only shown once there's enough history to make it meaningful.
   const projection = useMemo(() => {
     if (targetMin == null || done) return null
-    const completedCount = logs.filter((l) => logMinutes(l) > 0).length
-    if (completedCount < 5) return null
-    const avg = avgDayMinutes(logs, 30)
-    if (!avg || avg <= 0) return null
-    const daysNeeded = Math.ceil((targetMin - minutes) / avg)
+    if (completedCount < 5 || !typicalDayMinutes || typicalDayMinutes <= 0) return null
+    const daysNeeded = Math.ceil((targetMin - minutes) / typicalDayMinutes)
     return format(addDays(new Date(), daysNeeded), 'MMM d')
-  }, [logs, targetMin, minutes, done])
+  }, [targetMin, minutes, done, typicalDayMinutes, completedCount])
 
   return (
     <motion.div
@@ -383,7 +334,7 @@ function TotalHoursCard({
             Total hours logged
           </p>
           <p className="mt-1 text-3xl font-black tabular-nums">
-            {h}h {m}m
+            {Math.floor(minutes / 60)}h {minutes % 60}m
           </p>
           {targetMin != null && (
             <p className="mt-1 text-sm font-semibold text-white/95">
@@ -458,7 +409,7 @@ function ActiveCard({ log, onClockOut }: { log: AttendanceLog; onClockOut: () =>
   const elapsedHours = log.clock_in_at
     ? (Date.now() - new Date(log.clock_in_at).getTime()) / 3_600_000
     : 0
-  const overlong = elapsedHours > 16
+  const overlong = elapsedHours > MAX_SHIFT_HOURS
   return (
     <motion.div
       initial={{ scale: 0.97, opacity: 0 }}
@@ -498,7 +449,8 @@ function IdleCard({ onClockIn }: { onClockIn: () => void }) {
     if (!workLocation) return
     queryPermission('location').then((state) => {
       if (state !== 'granted' || cancelled) return
-      getCurrentPosition()
+      // Coarse, cached fix is plenty for a hint — don't spin up the GPS radio.
+      getCurrentPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 })
         .then((c) => {
           if (cancelled) return
           const d = distanceMeters(c, {

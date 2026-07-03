@@ -23,6 +23,14 @@ export function fmtDateShort(iso: string): string {
   return format(parseISO(iso), 'MMM d, yyyy')
 }
 
+/** Minutes as "Xh Ym" (drops the zero part, e.g. "7h", "45m"). */
+export function fmtHoursMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = Math.round(minutes % 60)
+  if (h === 0) return `${m}m`
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
 /** Duration between two ISO timestamps, human readable e.g. "7h 32m". */
 export function fmtDuration(start: string | null, end: string | null): string {
   if (!start) return '—'

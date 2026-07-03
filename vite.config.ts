@@ -26,6 +26,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // exceljs is dynamically imported for the rare export action — don't
+        // make every install pre-download its ~940 kB chunk.
+        globIgnores: ['**/exceljs*'],
         navigateFallbackDenylist: [/^\/auth\/callback/],
       },
     }),

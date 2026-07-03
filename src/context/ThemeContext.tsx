@@ -100,6 +100,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           .from('profiles')
           .update({ theme: next.theme, theme_mode: next.mode })
           .eq('id', user.id)
+          .then(({ error }) => {
+            // Non-critical (localStorage still has it) but don't hide it entirely.
+            if (error) console.warn('Theme preference not saved to profile:', error.message)
+          })
       }
     },
     [user],

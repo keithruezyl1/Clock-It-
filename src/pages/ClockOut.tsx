@@ -9,6 +9,7 @@ import { ConfirmModal } from '../components/ConfirmModal'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useLogs } from '../lib/useLogs'
 import { uploadPhoto } from '../lib/storage'
 import type { AttendanceLog } from '../lib/types'
 import { fmtTime, fmtDuration, todayDateStr } from '../lib/format'
@@ -17,6 +18,7 @@ export default function ClockOut() {
   const navigate = useNavigate()
   const toast = useToast()
   const { user } = useAuth()
+  const { refresh } = useLogs()
 
   const [log, setLog] = useState<AttendanceLog | null>(null)
   const [loading, setLoading] = useState(true)
@@ -72,6 +74,7 @@ export default function ClockOut() {
       if (error) throw error
       if (navigator.vibrate) navigator.vibrate(10)
       toast('success', 'Clocked out. Nice work today!')
+      void refresh()
       navigate('/', { replace: true })
     } catch (err) {
       toast('error', (err as Error).message || 'Could not clock out.')

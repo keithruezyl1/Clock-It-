@@ -1,24 +1,17 @@
 import { useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Skeleton } from '../components/Skeleton'
-import { addWeeks, endOfWeek, format, isSameWeek, setHours, startOfDay, startOfWeek } from 'date-fns'
-import { ChevronLeft, ChevronRight, Flame, Trophy, Sunrise, Clock, CalendarDays, BarChart3 } from 'lucide-react'
+import { addDays, addWeeks, endOfWeek, format, isSameWeek, setHours, startOfDay, startOfWeek } from 'date-fns'
+import { ChevronLeft, ChevronRight, Flame, Trophy, Sunrise, Clock, CalendarDays, BarChart3, RefreshCw } from 'lucide-react'
 import { Page } from '../components/Page'
 import { useLogs } from '../lib/useLogs'
 import { minutesPerDay, monthTotals, records, streaks } from '../lib/stats'
-import { fmtDateShort, fmtTime, todayDateStr } from '../lib/format'
+import { fmtDateShort, fmtHoursMinutes, fmtTime, todayDateStr } from '../lib/format'
 
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
-function fmtHours(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = Math.round(minutes % 60)
-  if (h === 0) return `${m}m`
-  return m === 0 ? `${h}h` : `${h}h ${m}m`
-}
-
 export default function Stats() {
-  const { logs, loading } = useLogs()
+  const { logs, loading, error, refresh } = useLogs()
   const reduceMotion = useReducedMotion()
   const [weekOffset, setWeekOffset] = useState(0)
 
@@ -43,6 +36,17 @@ export default function Stats() {
         <h1 className="text-2xl font-black text-lavender-700">Stats</h1>
       </header>
 
+      {error && !loading && (
+        <div className="card mb-4 flex items-center gap-3 p-4">
+          <p className="flex-1 text-[13px] font-semibold text-lavender-700/70">
+            Couldn’t load your logs.
+          </p>
+          <button className="btn-soft !px-4 !py-2 text-sm" onClick={() => void refresh()}>
+            <RefreshCw size={14} /> Retry
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <>
           <Skeleton className="h-60 rounded-3xl" />
@@ -65,7 +69,7 @@ export default function Stats() {
             <p className="font-extrabold text-lavender-700">
               {isCurrentWeek ? 'This week' : `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d')}`}
             </p>
-            <p className="text-[12px] font-bold text-lavender-400">{fmtHours(weekTotal)} logged</p>
+            <p className="text-[12px] font-bold text-lavender-400">{fmtHoursMinutes(weekTotal)} logged</p>
           </div>
           <button
             onClick={() => setWeekOffset((w) => w + 1)}
@@ -79,8 +83,8 @@ export default function Stats() {
 
         <div className="mt-5 flex items-end justify-between gap-2">
           {perDay.map((min, i) => {
-            const pct = maxDay > 0 ? Math.max(4, (min / maxDay) * 100) : 0
-            const dayStr = todayDateStr(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i))
+            const pct = min > 0 ? Math.max(4, (min / maxDay) * 100) : 0
+            const dayStr = todayDateStr(addDays(weekStart, i))
             const isToday = dayStr === todayStr
             return (
               <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
@@ -118,7 +122,7 @@ export default function Stats() {
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div>
-            <p className="text-xl font-black text-lavender-700">{fmtHours(month.totalMinutes)}</p>
+            <p className="text-xl font-black text-lavender-700">{fmtHoursMinutes(month.totalMinutes)}</p>
             <p className="text-[11px] font-semibold text-lavender-700/60">Total</p>
           </div>
           <div>
@@ -127,7 +131,7 @@ export default function Stats() {
           </div>
           <div>
             <p className="text-xl font-black text-lavender-700">
-              {month.daysWorked ? fmtHours(month.avgMinutesPerWorkedDay) : '—'}
+              {month.daysWorked ? fmtHoursMinutes(month.avgMinutesPerWorkedDay) : '—'}
             </p>
             <p className="text-[11px] font-semibold text-lavender-700/60">Avg / day</p>
           </div>
@@ -168,7 +172,7 @@ export default function Stats() {
               label="Longest day"
               value={
                 recs.longestDayMinutes > 0
-                  ? `${fmtHours(recs.longestDayMinutes)}${recs.longestDayDate ? ` · ${fmtDateShort(recs.longestDayDate)}` : ''}`
+                  ? `${fmtHoursMinutes(recs.longestDayMinutes)}${recs.longestDayDate ? ` · ${fmtDateShort(recs.longestDayDate)}` : ''}`
                   : '—'
               }
             />

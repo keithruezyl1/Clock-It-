@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -42,7 +42,8 @@ export default function Profile() {
   const { user, profile, workLocation, refreshProfile, refreshWorkLocation, signOut } = useAuth()
   const install = useInstallPrompt()
   const { logs } = useLogs()
-  const stats = { logs: logs.length, minutes: totalMinutes(logs) }
+  const minutes = useMemo(() => totalMinutes(logs), [logs])
+  const stats = { logs: logs.length, minutes }
 
   const [editOpen, setEditOpen] = useState(false)
   const [name, setName] = useState(profile?.full_name ?? '')

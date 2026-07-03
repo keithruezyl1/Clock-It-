@@ -1,4 +1,7 @@
 import { format, parseISO } from 'date-fns'
+import { fmtDateShort, fmtTime } from './format'
+import { logMinutes } from './stats'
+import { THEMES } from './themes'
 import type { AttendanceLog } from './types'
 
 export interface ExportOptions {
@@ -11,18 +14,25 @@ export interface ExportOptions {
   targetHours: number | null
 }
 
-/** Read a `--c-primary-*` RGB triplet from the active theme as an ARGB hex. */
-function themeArgb(varName: string, fallback: string): string {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
-  const parts = raw.split(/\s+/).map(Number)
-  if (parts.length !== 3 || parts.some(Number.isNaN)) return fallback
-  return 'FF' + parts.map((n) => n.toString(16).padStart(2, '0')).join('').toUpperCase()
+/**
+ * Sheet colors come from the active theme's light-mode swatch — never the
+ * live CSS variables, which are near-black in dark mode and would produce
+ * unreadable black-on-black rows.
+ */
+function themeColors(): { primary: string; tint: string } {
+  const themeId = document.documentElement.dataset.theme
+  const preset = THEMES.find((t) => t.id === themeId) ?? THEMES[0]
+  const rgb = [1, 3, 5].map((i) => parseInt(preset.swatch.slice(i, i + 2), 16))
+  const toArgb = (parts: number[]) =>
+    'FF' + parts.map((n) => n.toString(16).padStart(2, '0').toUpperCase()).join('')
+  // 12% of the swatch over white — a light zebra tint that keeps black text readable.
+  const tint = rgb.map((c) => Math.round(255 - (255 - c) * 0.12))
+  return { primary: toArgb(rgb), tint: toArgb(tint) }
 }
 
 function durationHours(log: AttendanceLog): number | null {
   if (!log.clock_in_at || !log.clock_out_at) return null
-  const ms = new Date(log.clock_out_at).getTime() - new Date(log.clock_in_at).getTime()
-  return Math.round((ms / 3_600_000) * 100) / 100
+  return Math.round((logMinutes(log) / 60) * 100) / 100
 }
 
 /** Sum of completed hours in a set of logs (same math the sheet's SUM uses). */
@@ -34,8 +44,7 @@ export async function exportXlsx({ logs, name, rangeLabel, from, to, targetHours
   // Loaded on demand so exceljs stays out of the main bundle.
   const ExcelJS = (await import('exceljs')).default
 
-  const primary = themeArgb('--c-primary-500', 'FFA78BFA')
-  const primaryTint = themeArgb('--c-primary-100', 'FFF3ECFF')
+  const { primary, tint: primaryTint } = themeColors()
 
   const wb = new ExcelJS.Workbook()
   wb.creator = 'Clock It!'
@@ -90,14 +99,13 @@ export async function exportXlsx({ logs, name, rangeLabel, from, to, targetHours
   const sorted = [...logs].sort((a, b) => a.work_date.localeCompare(b.work_date))
   const firstDataRow = 7
   sorted.forEach((log, i) => {
-    const d = parseISO(log.work_date)
     const dur = durationHours(log)
     const row = ws.addRow({
-      date: format(d, 'MMM d, yyyy'),
-      day: format(d, 'EEEE'),
+      date: fmtDateShort(log.work_date),
+      day: format(parseISO(log.work_date), 'EEEE'),
       title: log.title ?? '',
-      in: log.clock_in_at ? format(parseISO(log.clock_in_at), 'h:mm a') : '—',
-      out: log.clock_out_at ? format(parseISO(log.clock_out_at), 'h:mm a') : '—',
+      in: log.clock_in_at ? fmtTime(log.clock_in_at) : '—',
+      out: log.clock_out_at ? fmtTime(log.clock_out_at) : '—',
       dur: dur ?? undefined,
       notesIn: log.clock_in_notes ?? '',
       notesOut: log.clock_out_notes ?? '',
@@ -155,6 +163,9 @@ export async function exportXlsx({ logs, name, rangeLabel, from, to, targetHours
   const a = document.createElement('a')
   a.href = url
   a.download = `ClockIt_${safeName}_${from}_${to}.xlsx`
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  a.remove()
+  // Revoking synchronously can cancel the download on iOS Safari — defer it.
+  setTimeout(() => URL.revokeObjectURL(url), 30_000)
 }

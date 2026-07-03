@@ -29,6 +29,7 @@ export default function App() {
   const onboarded = !!profile?.onboarded
 
   return (
+    <LogsProvider>
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/auth/callback" element={<AuthCallback />} />
@@ -81,9 +82,7 @@ export default function App() {
         <Route
           element={
             <Guard authed={authed} onboarded={onboarded}>
-              <LogsProvider>
-                <AppShell />
-              </LogsProvider>
+              <AppShell />
             </Guard>
           }
         >
@@ -95,6 +94,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
+    </LogsProvider>
   )
 }
 

@@ -20,6 +20,7 @@ import { ConfirmModal } from '../components/ConfirmModal'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useLogs } from '../lib/useLogs'
 import { uploadPhoto } from '../lib/storage'
 import { getCurrentPosition, distanceMeters, formatDistance, type Coords } from '../lib/geo'
 import { todayDateStr } from '../lib/format'
@@ -30,6 +31,7 @@ export default function ClockIn() {
   const navigate = useNavigate()
   const toast = useToast()
   const { user, workLocation } = useAuth()
+  const { refresh } = useLogs()
 
   const [phase, setPhase] = useState<Phase>('verifying')
   const [coords, setCoords] = useState<Coords | null>(null)
@@ -116,6 +118,7 @@ export default function ClockIn() {
       if (error) throw error
       if (navigator.vibrate) navigator.vibrate(10)
       toast('success', "You're clocked in! Have a great day.")
+      void refresh()
       navigate('/', { replace: true })
     } catch (err) {
       const e = err as { code?: string; message?: string }

@@ -6,9 +6,10 @@ import { Spinner } from './Spinner'
 import { useToast } from './Toast'
 import { supabase } from '../lib/supabase'
 import { fmtTime } from '../lib/format'
+import { MAX_SHIFT_HOURS } from '../lib/constants'
 import type { AttendanceLog } from '../lib/types'
 
-const MAX_SHIFT_MINUTES = 16 * 60
+const MAX_SHIFT_MINUTES = MAX_SHIFT_HOURS * 60
 
 /**
  * Closes an `active` log left over from a previous day by picking a plausible
@@ -32,17 +33,23 @@ export function StaleSessionModal({
   const [saving, setSaving] = useState(false)
 
   // The end time must land on the log's own work_date, after clock-in,
-  // and within a sane maximum shift length.
+  // and within a sane maximum shift length. Bounds are aligned to whole
+  // minutes so they match what an HH:mm time input can express.
   const limits = useMemo(() => {
     if (!log?.clock_in_at) return null
     const clockIn = parseISO(log.clock_in_at)
     const endOfDay = new Date(clockIn)
     endOfDay.setHours(23, 59, 0, 0)
-    const capped = new Date(
+    const max = new Date(
       Math.min(clockIn.getTime() + MAX_SHIFT_MINUTES * 60_000, endOfDay.getTime()),
     )
-    const min = new Date(clockIn.getTime() + 60_000)
-    return { clockIn, min, max: capped }
+    max.setSeconds(0, 0)
+    // Next whole minute at least 1 min after clock-in…
+    let min = new Date(Math.ceil((clockIn.getTime() + 60_000) / 60_000) * 60_000)
+    // …but a clock-in at ~23:59 leaves no room on the same day: fall back to
+    // the last minute of the day so the session can still be closed.
+    if (min > max) min = new Date(max)
+    return { clockIn, min, max }
   }, [log?.clock_in_at])
 
   useEffect(() => {
@@ -67,13 +74,16 @@ export function StaleSessionModal({
   }, [log, limits, time])
 
   const save = async () => {
-    if (!log || !endDate) return
+    if (!log || !endDate || !limits) return
     setSaving(true)
     const trimmed = note.trim()
+    // The 23:59 fallback can precede a late clock-in by seconds — never store
+    // a clock-out earlier than the clock-in.
+    const end = endDate < limits.clockIn ? limits.clockIn : endDate
     const { error } = await supabase
       .from('attendance_logs')
       .update({
-        clock_out_at: endDate.toISOString(),
+        clock_out_at: end.toISOString(),
         status: 'completed',
         clock_out_notes: trimmed ? `${trimmed} (closed manually)` : '(closed manually)',
       })
