@@ -1,9 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Home, User } from 'lucide-react'
+import { Home, BarChart3, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const tabs = [
   { to: '/', label: 'Home', icon: Home, end: true },
+  { to: '/stats', label: 'Stats', icon: BarChart3, end: false },
   { to: '/profile', label: 'Profile', icon: User, end: false },
 ]
 

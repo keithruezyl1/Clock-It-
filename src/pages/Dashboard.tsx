@@ -22,8 +22,9 @@ import { ExportModal } from '../components/ExportModal'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useLogs } from '../lib/useLogs'
 import type { AttendanceLog } from '../lib/types'
-import { fmtTime, fmtDateLong, fmtDuration, todayDateStr } from '../lib/format'
+import { fmtTime, fmtDateLong, fmtDuration } from '../lib/format'
 
 // A mix of motivating, warm, and playful greetings shown on the idle card.
 const WELCOME_MESSAGES = [
@@ -61,41 +62,11 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const toast = useToast()
   const { user, profile } = useAuth()
-  const [logs, setLogs] = useState<AttendanceLog[]>([])
-  const [loading, setLoading] = useState(true)
+  const { logs, loading, today, mutate } = useLogs()
   const [selected, setSelected] = useState<AttendanceLog | null>(null)
   const [toDelete, setToDelete] = useState<AttendanceLog | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
-
-  // Track the local calendar day so the UI rolls over at midnight even if the
-  // app is left open — yesterday's session then counts as yesterday, not today.
-  const [today, setToday] = useState(todayDateStr())
-  useEffect(() => {
-    const t = setInterval(() => {
-      const d = todayDateStr()
-      setToday((prev) => (prev === d ? prev : d))
-    }, 30000)
-    return () => clearInterval(t)
-  }, [])
-
-  const load = async () => {
-    if (!user) return
-    const { data, error } = await supabase
-      .from('attendance_logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('clock_in_at', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false })
-    if (error) toast('error', error.message)
-    setLogs(data ?? [])
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
 
   // Only today's session drives the "clocked in" hero. An open session from a
   // previous day stays in history dated to its own day; it no longer counts as
@@ -145,7 +116,7 @@ export default function Dashboard() {
       return
     }
     toast('success', 'Log deleted.')
-    setLogs((l) => l.filter((x) => x.id !== toDelete.id))
+    mutate((l) => l.filter((x) => x.id !== toDelete.id))
     setToDelete(null)
     setSelected(null)
   }

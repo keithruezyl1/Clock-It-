@@ -28,6 +28,8 @@ import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { THEMES, type ThemeMode } from '../lib/themes'
+import { useLogs } from '../lib/useLogs'
+import { totalMinutes } from '../lib/stats'
 import { supabase } from '../lib/supabase'
 import { useInstallPrompt } from '../lib/useInstallPrompt'
 import { getCurrentPosition, reverseGeocode, distanceMeters, type Coords, type ReverseGeocode } from '../lib/geo'
@@ -39,8 +41,9 @@ export default function Profile() {
   const toast = useToast()
   const { user, profile, workLocation, refreshProfile, refreshWorkLocation, signOut } = useAuth()
   const install = useInstallPrompt()
+  const { logs } = useLogs()
+  const stats = { logs: logs.length, minutes: totalMinutes(logs) }
 
-  const [stats, setStats] = useState({ logs: 0, minutes: 0 })
   const [editOpen, setEditOpen] = useState(false)
   const [name, setName] = useState(profile?.full_name ?? '')
   const [phone, setPhone] = useState(profile?.phone ?? '')
@@ -51,24 +54,6 @@ export default function Profile() {
   const [signOutOpen, setSignOutOpen] = useState(false)
   const [iosOpen, setIosOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
-
-  useEffect(() => {
-    if (!user) return
-    supabase
-      .from('attendance_logs')
-      .select('clock_in_at, clock_out_at')
-      .eq('user_id', user.id)
-      .then(({ data }) => {
-        const rows = data ?? []
-        let minutes = 0
-        for (const r of rows) {
-          if (r.clock_in_at && r.clock_out_at) {
-            minutes += (new Date(r.clock_out_at).getTime() - new Date(r.clock_in_at).getTime()) / 60000
-          }
-        }
-        setStats({ logs: rows.length, minutes: Math.round(minutes) })
-      })
-  }, [user])
 
   const saveProfile = async () => {
     if (!user) return
@@ -309,7 +294,7 @@ export default function Profile() {
         onSaved={refreshWorkLocation}
       />
 
-      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} logs={logs} />
 
       <ConfirmModal
         open={signOutOpen}

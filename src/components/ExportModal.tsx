@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
 import {
   endOfMonth,
@@ -10,7 +10,6 @@ import { Modal } from './Modal'
 import { Spinner } from './Spinner'
 import { useToast } from './Toast'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 import { exportXlsx, totalHours } from '../lib/exportXlsx'
 import { todayDateStr } from '../lib/format'
 import type { AttendanceLog } from '../lib/types'
@@ -27,32 +26,18 @@ const RANGES: { key: RangeKey; label: string }[] = [
 export function ExportModal({
   open,
   onClose,
-  logs,
+  logs: allLogs,
 }: {
   open: boolean
   onClose: () => void
-  /** Pass already-loaded logs to skip the fetch; omit to load on open. */
-  logs?: AttendanceLog[]
+  logs: AttendanceLog[]
 }) {
   const toast = useToast()
-  const { user, profile } = useAuth()
+  const { profile } = useAuth()
   const [range, setRange] = useState<RangeKey>('month')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
-  const [fetched, setFetched] = useState<AttendanceLog[] | null>(null)
   const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    if (!open || logs || !user) return
-    supabase
-      .from('attendance_logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('clock_in_at', { ascending: false, nullsFirst: false })
-      .then(({ data }) => setFetched(data ?? []))
-  }, [open, logs, user])
-
-  const allLogs = logs ?? fetched
 
   const bounds = useMemo((): { from: string; to: string; label: string } | null => {
     const now = new Date()
@@ -67,7 +52,7 @@ export function ExportModal({
       return { from, to, label: `This month (${from} – ${to})` }
     }
     if (range === 'all') {
-      if (!allLogs?.length) return { from: 'all', to: todayDateStr(), label: 'All time' }
+      if (!allLogs.length) return { from: 'all', to: todayDateStr(), label: 'All time' }
       const dates = allLogs.map((l) => l.work_date).sort()
       return { from: dates[0], to: dates[dates.length - 1], label: 'All time' }
     }
@@ -76,7 +61,7 @@ export function ExportModal({
   }, [range, customFrom, customTo, allLogs])
 
   const filtered = useMemo(() => {
-    if (!allLogs || !bounds) return []
+    if (!bounds) return []
     if (range === 'all') return allLogs
     return allLogs.filter((l) => l.work_date >= bounds.from && l.work_date <= bounds.to)
   }, [allLogs, bounds, range])
@@ -149,9 +134,7 @@ export function ExportModal({
         )}
 
         <p className="rounded-2xl bg-lavender-50 p-3 text-center text-[13px] font-semibold text-lavender-600">
-          {allLogs == null ? (
-            'Loading your logs…'
-          ) : !bounds ? (
+          {!bounds ? (
             'Pick a valid date range.'
           ) : (
             <>
@@ -163,7 +146,7 @@ export function ExportModal({
         <button
           className="btn-primary w-full"
           onClick={download}
-          disabled={busy || !bounds || allLogs == null || filtered.length === 0}
+          disabled={busy || !bounds || filtered.length === 0}
         >
           {busy ? <Spinner size={18} /> : <Download size={18} />} Download .xlsx
         </button>

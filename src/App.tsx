@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion'
 import { useAuth } from './context/AuthContext'
 import { FullScreenLoader } from './components/Spinner'
 import { AppShell } from './components/AppShell'
+import { LogsProvider } from './lib/useLogs'
 
 import Permissions from './pages/Permissions'
 import Login from './pages/Login'
@@ -12,6 +13,7 @@ import Dashboard from './pages/Dashboard'
 import ClockIn from './pages/ClockIn'
 import ClockOut from './pages/ClockOut'
 import Profile from './pages/Profile'
+import Stats from './pages/Stats'
 
 const PERMS_KEY = 'clockit_perms_v1'
 export const permsSeen = () => localStorage.getItem(PERMS_KEY) === 'done'
@@ -76,8 +78,17 @@ export default function App() {
         />
 
         {/* Tabbed app */}
-        <Route element={<Guard authed={authed} onboarded={onboarded}><AppShell /></Guard>}>
+        <Route
+          element={
+            <Guard authed={authed} onboarded={onboarded}>
+              <LogsProvider>
+                <AppShell />
+              </LogsProvider>
+            </Guard>
+          }
+        >
           <Route path="/" element={<Dashboard />} />
+          <Route path="/stats" element={<Stats />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
 
