@@ -7,11 +7,11 @@ import {
   CalendarDays,
   Clock,
   ChevronRight,
-  Coffee,
   Trash2,
   Timer,
   Download,
 } from 'lucide-react'
+import { EmptyLogsIllustration } from '../components/illustrations/EmptyLogs'
 import { Page } from '../components/Page'
 import { Wordmark } from '../components/Logo'
 import { Spinner } from '../components/Spinner'
@@ -204,10 +204,8 @@ export default function Dashboard() {
       </div>
 
       {loading ? null : logs.length === 0 ? (
-        <div className="card flex flex-col items-center gap-2 py-12 text-center">
-          <div className="grid h-14 w-14 place-items-center rounded-3xl bg-lavender-100 text-lavender-400">
-            <Coffee size={26} />
-          </div>
+        <div className="card flex flex-col items-center gap-2 py-10 text-center">
+          <EmptyLogsIllustration className="h-28 w-auto" />
           <p className="font-bold text-lavender-600">No logs yet</p>
           <p className="px-8 text-[13px] text-lavender-700/60">
             Clock in for the day to create your first log.

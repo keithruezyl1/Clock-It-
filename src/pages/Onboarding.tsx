@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  Sparkles,
   MapPin,
   Crosshair,
   ChevronRight,
@@ -21,6 +20,9 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { getCurrentPosition, reverseGeocode, type Coords, type ReverseGeocode } from '../lib/geo'
 import { CLOCK_IN_RADIUS_METERS } from '../lib/constants'
+import { HeroIllustration } from '../components/illustrations/Hero'
+import { StepTargetIllustration } from '../components/illustrations/StepTarget'
+import { StepWorkplaceIllustration } from '../components/illustrations/StepWorkplace'
 
 const HOURS_PRESETS = [200, 300, 400, 500, 600]
 
@@ -224,9 +226,7 @@ function NameStep({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-6 grid h-14 w-14 place-items-center rounded-3xl bg-gradient-to-br from-lavender-400 to-lavender-600 text-white shadow-soft">
-        <Sparkles size={26} />
-      </div>
+      <HeroIllustration className="mb-4 h-28 w-auto self-start" />
       <h2 className="text-2xl font-black text-lavender-700">What should we call you?</h2>
       <p className="mt-2 text-[15px] text-lavender-700/70">
         This is the name shown on your profile and logs.
@@ -255,9 +255,7 @@ function OjtHoursStep({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-6 grid h-14 w-14 place-items-center rounded-3xl bg-gradient-to-br from-peach-400 to-peach-500 text-white shadow-soft">
-        <Timer size={26} />
-      </div>
+      <StepTargetIllustration className="mb-4 h-28 w-auto self-start" />
       <h2 className="text-2xl font-black text-lavender-700">How long is your OJT?</h2>
       <p className="mt-2 text-[15px] text-lavender-700/70">
         Set the total number of hours you need to complete. We’ll track your progress and cheer you
@@ -324,9 +322,7 @@ function LocationStep({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-6 grid h-14 w-14 place-items-center rounded-3xl bg-gradient-to-br from-mint-400 to-mint-500 text-white shadow-soft">
-        <MapPin size={26} />
-      </div>
+      <StepWorkplaceIllustration className="mb-4 h-28 w-auto self-start" />
       <h2 className="text-2xl font-black text-lavender-700">Set your workplace</h2>
       <p className="mt-2 text-[15px] text-lavender-700/70">
         We’ll use your current GPS position to mark where you work.

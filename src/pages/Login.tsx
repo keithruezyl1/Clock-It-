@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User as UserIcon, Eye, EyeOff } from 'lucide-react'
 import { Page } from '../components/Page'
-import { Logo, Wordmark } from '../components/Logo'
+import { Wordmark } from '../components/Logo'
+import { HeroIllustration } from '../components/illustrations/Hero'
 import { Spinner } from '../components/Spinner'
 import { useToast } from '../components/Toast'
 import { supabase } from '../lib/supabase'
@@ -66,8 +67,8 @@ export default function Login() {
   return (
     <Page className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-10">
       <div className="mb-8 flex flex-col items-center text-center">
-        <Logo size="lg" />
-        <h1 className="mt-5 text-3xl font-black text-lavender-700">
+        <HeroIllustration className="h-32 w-auto" />
+        <h1 className="mt-4 text-3xl font-black text-lavender-700">
           <Wordmark className="text-3xl" />
         </h1>
         <p className="mt-1 text-[15px] text-lavender-700/70">

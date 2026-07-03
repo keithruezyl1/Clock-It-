@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { PartyPopper } from 'lucide-react'
+import { CelebrateIllustration } from './illustrations/Celebrate'
 
 const CONFETTI = [
   { x: -120, y: -40, c: 'bg-lavender-400', d: 0 },
@@ -54,12 +54,12 @@ export function CelebrationModal({
             </div>
 
             <motion.div
-              initial={{ rotate: -12 }}
-              animate={{ rotate: [-12, 12, -8, 8, 0] }}
+              initial={{ rotate: -8 }}
+              animate={{ rotate: [-8, 8, -5, 5, 0] }}
               transition={{ duration: 0.8, delay: 0.1 }}
-              className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-gradient-to-br from-lavender-400 to-lavender-600 text-white shadow-soft"
+              className="mx-auto w-40"
             >
-              <PartyPopper size={40} />
+              <CelebrateIllustration className="w-full" />
             </motion.div>
 
             <h2 className="mt-5 text-2xl font-black text-lavender-700">OJT complete! 🎉</h2>

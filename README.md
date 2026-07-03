@@ -42,6 +42,13 @@ The database schema lives in Supabase migrations (`profiles`, `work_locations`, 
 
 To enable **Google OAuth**: Supabase Dashboard → Authentication → Providers → Google → add your Google Cloud OAuth client ID/secret, and add your deployed URL to **Authentication → URL Configuration** (Site URL + `https://<your-domain>/auth/callback` as a redirect URL).
 
+## Design conventions
+
+- **Theming**: all colors resolve through CSS variables defined in `src/index.css` (`--c-primary-*`, `--c-success/warning/info-*`, `--surface`, `--bg-*`, `--text-body`). Theme presets and dark variants are scoped to `[data-theme]` / `[data-mode]` attribute blocks; `src/lib/themes.ts` holds the preset metadata and `src/context/ThemeContext.tsx` applies/persists the selection.
+- **Icons**: lucide-react only. Default `strokeWidth={2.25}` for standalone icons; sizes come from the fixed scale **13 / 15 / 18 / 22 / 26**.
+- **Illustrations**: hand-built SVG components in `src/components/illustrations/`, all fills via theme CSS variables so they recolor with the active theme. The mascot ("Tick", a round alarm clock) lives in `Mascot.tsx` and is composed into scenes (empty state, celebration, onboarding steps, heroes). Keep each SVG under 8 KB; no raster illustration assets.
+- **Radii/shadows**: rounded-2xl/3xl/4xl and shadow-soft/card only.
+
 ## Notes
 
 - Location verification uses the browser Geolocation API + Haversine distance against your saved workplace.

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Bell, MapPin, Camera, Images, Check, ChevronRight } from 'lucide-react'
 import { Page } from '../components/Page'
-import { Logo, Wordmark } from '../components/Logo'
+import { Wordmark } from '../components/Logo'
+import { HeroIllustration } from '../components/illustrations/Hero'
 import { Spinner } from '../components/Spinner'
 import { markPermsSeen } from '../App'
 import {
@@ -93,7 +94,7 @@ export default function Permissions() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 18 }}
           >
-            <Logo size="lg" />
+            <HeroIllustration className="h-32 w-auto" />
           </motion.div>
           <h1 className="mt-5 text-3xl font-black text-lavender-700">
             Welcome to <Wordmark className="text-3xl" />
