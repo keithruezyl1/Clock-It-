@@ -20,6 +20,7 @@ import { LogDetailModal } from '../components/LogDetailModal'
 import { CelebrationModal } from '../components/CelebrationModal'
 import { ExportModal } from '../components/ExportModal'
 import { StaleSessionModal } from '../components/StaleSessionModal'
+import { WeekendCard } from '../components/WeekendCard'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { useLogs } from '../lib/useLogs'
@@ -28,7 +29,7 @@ import { queryPermission } from '../lib/permissions'
 import { getCurrentPosition, distanceMeters, formatDistance } from '../lib/geo'
 import { MAX_SHIFT_HOURS } from '../lib/constants'
 import type { AttendanceLog } from '../lib/types'
-import { fmtTime, fmtDateLong, fmtDuration } from '../lib/format'
+import { fmtTime, fmtDateLong, fmtDuration, isWeekend } from '../lib/format'
 import { addDays, format } from 'date-fns'
 
 // A mix of motivating, warm, and playful greetings shown on the idle card.
@@ -96,6 +97,9 @@ export default function Dashboard() {
     () => logs.find((l) => l.work_date === today && l.status === 'completed') ?? null,
     [logs, today],
   )
+
+  // Weekends are days off — no clocking in, just a friendly greeting.
+  const weekend = isWeekend(today)
 
   // Total logged minutes across all completed (clocked-out) sessions.
   const totalMinutes = useMemo(() => sumMinutes(logs), [logs])
@@ -187,6 +191,8 @@ export default function Dashboard() {
         <ActiveCard log={activeLog} onClockOut={() => navigate('/clock-out')} />
       ) : todayCompleted ? (
         <DoneCard log={todayCompleted} />
+      ) : weekend ? (
+        <WeekendCard dateStr={today} />
       ) : (
         <IdleCard onClockIn={() => navigate('/clock-in')} />
       )}

@@ -7,6 +7,12 @@ export function todayDateStr(d = new Date()): string {
   ).padStart(2, '0')}`
 }
 
+/** True if the given local date (YYYY-MM-DD) falls on Saturday or Sunday. */
+export function isWeekend(dateStr: string = todayDateStr()): boolean {
+  const day = parseISO(dateStr).getDay()
+  return day === 0 || day === 6
+}
+
 export function fmtTime(iso: string | null): string {
   if (!iso) return '--:--'
   return format(parseISO(iso), 'h:mm a')
