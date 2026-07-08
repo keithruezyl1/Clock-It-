@@ -1,0 +1,146 @@
+import { useMemo, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Skeleton } from '../components/Skeleton'
+import { addDays, addWeeks, format, isSameWeek, startOfWeek } from 'date-fns'
+import { ChevronLeft, ChevronRight, CalendarDays, RefreshCw } from 'lucide-react'
+import { Page } from '../components/Page'
+import { useLogs } from '../lib/useLogs'
+import { minutesPerDay, monthTotals } from '../lib/stats'
+import { fmtHoursMinutes, todayDateStr } from '../lib/format'
+
+// Weekdays only — OJT doesn't count Saturday and Sunday.
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F']
+
+export default function Stats() {
+  const { logs, loading, error, refresh } = useLogs()
+  const reduceMotion = useReducedMotion()
+  const [weekOffset, setWeekOffset] = useState(0)
+
+  const weekStart = useMemo(
+    () => startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }),
+    [weekOffset],
+  )
+  const weekEnd = addDays(weekStart, 4) // Mon–Fri
+  const perDay = useMemo(
+    () => minutesPerDay(logs, weekStart).slice(0, DAY_LABELS.length),
+    [logs, weekStart],
+  )
+  const weekTotal = perDay.reduce((a, b) => a + b, 0)
+  const maxDay = Math.max(...perDay)
+  const isCurrentWeek = isSameWeek(new Date(), weekStart, { weekStartsOn: 1 })
+  const todayStr = todayDateStr()
+
+  const month = useMemo(() => monthTotals(logs, new Date()), [logs])
+
+  return (
+    <Page className="px-5 safe-top">
+      <header className="py-6">
+        <h1 className="text-2xl font-black text-lavender-700">Stats</h1>
+      </header>
+
+      {error && !loading && (
+        <div className="card mb-4 flex items-center gap-3 p-4">
+          <p className="flex-1 text-[13px] font-semibold text-lavender-700/70">
+            Couldn’t load your logs.
+          </p>
+          <button className="btn-soft !px-4 !py-2 text-sm" onClick={() => void refresh()}>
+            <RefreshCw size={14} /> Retry
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <>
+          <Skeleton className="h-60 rounded-3xl" />
+          <Skeleton className="mt-4 h-28 rounded-3xl" />
+        </>
+      ) : (
+      <>
+      {/* Week chart */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setWeekOffset((w) => w - 1)}
+            className="grid h-9 w-9 place-items-center rounded-2xl bg-lavender-100 text-lavender-600 active:scale-95 transition"
+            aria-label="Previous week"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <div className="text-center">
+            <p className="font-extrabold text-lavender-700">
+              {isCurrentWeek ? 'This week' : `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d')}`}
+            </p>
+            <p className="text-[12px] font-bold text-lavender-400">{fmtHoursMinutes(weekTotal)} logged</p>
+          </div>
+          <button
+            onClick={() => setWeekOffset((w) => w + 1)}
+            disabled={isCurrentWeek}
+            className="grid h-9 w-9 place-items-center rounded-2xl bg-lavender-100 text-lavender-600 active:scale-95 transition disabled:opacity-40"
+            aria-label="Next week"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <div className="mt-5 flex items-end justify-between gap-2">
+          {perDay.map((min, i) => {
+            const pct = min > 0 ? Math.max(4, (min / maxDay) * 100) : 0
+            const dayStr = todayDateStr(addDays(weekStart, i))
+            const isToday = dayStr === todayStr
+            return (
+              <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                <span className="h-4 text-[10px] font-bold text-lavender-400">
+                  {min > 0 ? (min / 60).toFixed(min % 60 === 0 ? 0 : 1) : ''}
+                </span>
+                <div className="flex h-28 w-full items-end overflow-hidden rounded-xl bg-lavender-100/60">
+                  <motion.div
+                    className={`w-full rounded-xl ${isToday ? 'bg-lavender-500' : 'bg-lavender-300'}`}
+                    initial={reduceMotion ? false : { height: 0 }}
+                    animate={{ height: `${pct}%` }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : { duration: 0.5, ease: 'easeOut', delay: i * 0.04 }
+                    }
+                  />
+                </div>
+                <span
+                  className={`text-[11px] font-bold ${isToday ? 'text-lavender-600' : 'text-lavender-400'}`}
+                >
+                  {DAY_LABELS[i]}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Month summary */}
+      <div className="card mt-4 mb-4 p-5">
+        <div className="flex items-center gap-2">
+          <CalendarDays size={16} className="text-lavender-400" />
+          <p className="font-extrabold text-lavender-700">{format(new Date(), 'MMMM')}</p>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p className="text-xl font-black text-lavender-700">{fmtHoursMinutes(month.totalMinutes)}</p>
+            <p className="text-[11px] font-semibold text-lavender-700/60">Total</p>
+          </div>
+          <div>
+            <p className="text-xl font-black text-lavender-700">{month.daysWorked}</p>
+            <p className="text-[11px] font-semibold text-lavender-700/60">Days worked</p>
+          </div>
+          <div>
+            <p className="text-xl font-black text-lavender-700">
+              {month.daysWorked ? fmtHoursMinutes(month.avgMinutesPerWorkedDay) : '—'}
+            </p>
+            <p className="text-[11px] font-semibold text-lavender-700/60">Avg / day</p>
+          </div>
+        </div>
+      </div>
+
+      </>
+      )}
+    </Page>
+  )
+}
